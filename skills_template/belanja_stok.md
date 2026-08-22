@@ -9,8 +9,11 @@ Gunakan perintah ini untuk memodifikasi daftar belanja atau stok:
 ## 🛒 Daftar Belanja
 
 ### Tambah ke Daftar Belanja
+Jika pengguna memberikan tautan/URL (seperti link Shopee, Tokopedia, dll), **jadikan seluruh link tersebut sebagai `--item`**. Sistem akan secara otomatis mengekstrak nama barangnya dari link tersebut!
 ```bash
-{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action shopping --item "<nama_barang>" --qty <angka> --unit "<satuan>"
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action shopping --item "<nama_barang_ATAU_link_ecommerce>" --qty <angka> --unit "<satuan>"
+# Contoh:
+# {{PYTHON_BIN}} {{FAST_CLI_PATH}} --action shopping --item "https://shopee.co.id/xxx" --qty 1
 ```
 
 ### Lihat Daftar Belanja

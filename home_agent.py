@@ -113,9 +113,46 @@ def add_shopping_list(item, qty, unit=""):
     if qty < 0:
         print("Error: Kuantitas tidak boleh negatif.")
         return
+        
+    # Auto-extract from URL if item is a link
+    if item.startswith('http://') or item.startswith('https://'):
+        original_url = item
+        print(f"Mendeteksi URL, mencoba mengekstrak nama barang dari {original_url}...")
+        try:
+            import urllib.request, urllib.parse, re
+            req = urllib.request.Request(item, headers={'User-Agent': 'Mozilla/5.0'})
+            response = urllib.request.urlopen(req)
+            final_url = response.geturl()
+            
+            if 'shopee' in final_url or 'shp.ee' in final_url:
+                match = re.search(r'shopee\.co\.id/([^/]+)-i\.\d+', final_url)
+                if match:
+                    item = urllib.parse.unquote(match.group(1)).replace('-', ' ')
+                    item += f" (Shopee)"
+            elif 'tokopedia.com' in final_url:
+                match = re.search(r'tokopedia\.com/[^/]+/([^/?]+)', final_url)
+                if match:
+                    item = urllib.parse.unquote(match.group(1)).replace('-', ' ')
+                    item += f" (Tokopedia)"
+            else:
+                # Coba ambil title html
+                html = response.read().decode('utf-8')
+                match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
+                if match:
+                    item = match.group(1).strip()
+                else:
+                    item = "Barang dari Link"
+        except Exception as e:
+            print(f"Gagal mengekstrak link: {e}")
+            item = "Barang dari Link"
+
     doc_ref = db.collection('shopping_list').document(sanitize_id(item))
     data = {'item': item, 'quantity': qty, 'status': 'pending'}
     if unit: data['unit'] = unit
+    if 'http' in str(item) or 'Barang dari Link' in item or '(Shopee)' in item or '(Tokopedia)' in item:
+        # Jika berhasil di ekstrak, simpan url aslinya
+        data['url'] = original_url if 'original_url' in locals() else item
+        
     doc_ref.set(data)
     unit_str = f" {unit}" if unit else ""
     print(f"{qty}{unit_str} {item} berhasil ditambahkan ke daftar belanja!")
@@ -519,11 +556,13 @@ def extract_video_recipe(url):
         client = genai.Client(api_key=api_key)
         
         if is_youtube:
-            # YouTube dapat diproses secara native oleh Gemini 1.5/2.5
-            prompt = f"Tolong tonton video YouTube berikut dan ekstrak resep masakannya: {url}. Format output yang wajib: 1. Nama Masakan, 2. Bahan-bahan, 3. Cara Membuat. Jika sama sekali bukan video resep, katakan saja 'Bukan video resep'."
+            from google.genai import types
+            # YouTube dapat diproses secara native oleh Gemini menggunakan Part.from_uri
+            video_part = types.Part.from_uri(file_uri=url, mime_type='video/mp4')
+            prompt = "Tolong tonton video YouTube ini dan ekstrak resep masakannya secara detail dan akurat. Format output yang wajib: 1. Nama Masakan, 2. Bahan-bahan, 3. Cara Membuat. Jika sama sekali bukan video resep, katakan saja 'Bukan video resep'."
             ai_response = client.models.generate_content(
                 model='gemini-2.5-flash',
-                contents=prompt
+                contents=[video_part, prompt]
             )
             print("\n--- HASIL EKSTRAKSI YOUTUBE (GEMINI AI) ---")
             print(ai_response.text)
