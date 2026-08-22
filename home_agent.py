@@ -164,7 +164,8 @@ def get_shopping_list():
         data = doc.to_dict()
         unit = data.get('unit', '')
         unit_str = f" {unit}" if unit else ""
-        items.append(f"- {data.get('item')}: {data.get('quantity')}{unit_str}")
+        url_str = f" (Link: {data.get('url')})" if data.get('url') else ""
+        items.append(f"- {data.get('item')}: {data.get('quantity')}{unit_str}{url_str}")
     
     if items:
         print("🛒 Daftar Belanja (belum dibeli):")
