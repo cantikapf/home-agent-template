@@ -1,3 +1,4 @@
+import sys
 import argparse
 import firebase_admin
 from firebase_admin import credentials
@@ -488,27 +489,18 @@ def save_recipe(name, ingredients, steps, source_url=""):
     })
     print(f"✅ Resep '{name}' berhasil disimpan ke database!")
 
-def extract_tiktok_recipe(url):
+def extract_video_recipe(url):
     from google import genai
+    import subprocess
     try:
-        print(f"Sedang memproses video TikTok: {url} ... (mohon tunggu 20-30 detik)")
+        is_tiktok = 'tiktok.com' in url
+        is_youtube = 'youtube.com' in url or 'youtu.be' in url
         
-        # Validasi URL basic
-        if 'tiktok.com' not in url:
-            print("❌ URL tidak valid. Hanya menerima tautan tiktok.com.")
+        if not (is_tiktok or is_youtube):
+            print("❌ URL tidak valid. Hanya menerima tautan TikTok atau YouTube.")
             return
-            
-        api_url = f"https://www.tikwm.com/api/?url={urllib.parse.quote(url)}"
-        req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
-        response = urllib.request.urlopen(req)
-        data = json.loads(response.read().decode('utf-8'))
-        
-        if data.get('code') != 0:
-            print(f"❌ Gagal mendapatkan data dari TikTok: {data.get('msg')}")
-            return
-            
-        play_url = data.get('data', {}).get('play')
-        title = data.get('data', {}).get('title', 'Tanpa Judul')
+
+        print(f"Sedang memproses video dari {'TikTok' if is_tiktok else 'YouTube'}... (mohon tunggu beberapa saat)")
         
         api_key = os.environ.get('GEMINI_API_KEY')
         if not api_key:
@@ -524,13 +516,40 @@ def extract_tiktok_recipe(url):
             print("❌ GEMINI_API_KEY tidak ditemukan.")
             return
             
-        # Gunakan tempfile
+        client = genai.Client(api_key=api_key)
+        
+        if is_youtube:
+            # YouTube dapat diproses secara native oleh Gemini 1.5/2.5
+            prompt = f"Tolong tonton video YouTube berikut dan ekstrak resep masakannya: {url}. Format output yang wajib: 1. Nama Masakan, 2. Bahan-bahan, 3. Cara Membuat. Jika sama sekali bukan video resep, katakan saja 'Bukan video resep'."
+            ai_response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
+            print("\n--- HASIL EKSTRAKSI YOUTUBE (GEMINI AI) ---")
+            print(ai_response.text)
+            print("------------------------------------------------\n")
+            print(f"💡 Instruksi untuk AI: Tampilkan hasil ekstraksi AI di atas kepada pengguna persis seperti itu (sebagai draf). Jika pengguna bilang oke, simpan menggunakan action `save_recipe` dengan URL {url}.")
+            return
+            
+        # Jika TikTok, kita download dulu videonya
         with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp_file:
             video_path = tmp_file.name
+
+        title = "Tanpa Judul"
+        api_url = f"https://www.tikwm.com/api/?url={urllib.parse.quote(url)}"
+        req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = urllib.request.urlopen(req)
+        data = json.loads(response.read().decode('utf-8'))
+        
+        if data.get('code') != 0:
+            print(f"❌ Gagal mendapatkan data dari TikTok: {data.get('msg')}")
+            os.remove(video_path)
+            return
             
+        play_url = data.get('data', {}).get('play')
+        title = data.get('data', {}).get('title', 'Tanpa Judul')
         urllib.request.urlretrieve(play_url, video_path)
         
-        client = genai.Client(api_key=api_key)
         video_file = client.files.upload(file=video_path)
         
         while video_file.state.name == 'PROCESSING':
@@ -538,11 +557,11 @@ def extract_tiktok_recipe(url):
             video_file = client.files.get(name=video_file.name)
             
         if video_file.state.name == 'FAILED':
-            print("❌ Pemrosesan video oleh AI gagal.")
+            print("❌ Pemrosesan video TikTok oleh AI gagal.")
             os.remove(video_path)
             return
             
-        prompt = f"Video ini berjudul '{title}'. Tolong tonton videonya, baca teks yang muncul di layar, dan dengarkan suaranya. Ekstrak resep masakan dari video ini! Format output yang wajib: 1. Nama Masakan, 2. Bahan-bahan, 3. Cara Membuat. Jika video ini sama sekali bukan tentang resep/masakan, katakan saja 'Bukan video resep'."
+        prompt = f"Video TikTok ini berjudul '{title}'. Tolong tonton videonya, baca teks yang muncul di layar, dan dengarkan suaranya. Ekstrak resep masakan dari video ini! Format output yang wajib: 1. Nama Masakan, 2. Bahan-bahan, 3. Cara Membuat. Jika video ini sama sekali bukan tentang resep/masakan, katakan saja 'Bukan video resep'."
         
         ai_response = client.models.generate_content(
             model='gemini-2.5-flash',
@@ -552,7 +571,7 @@ def extract_tiktok_recipe(url):
         print("\n--- HASIL EKSTRAKSI TIKTOK (GEMINI AI VIDEO) ---")
         print(ai_response.text)
         print("------------------------------------------------\n")
-        print("💡 Instruksi untuk AI: Tampilkan hasil ekstraksi AI di atas kepada pengguna persis seperti itu (sebagai draf). Jika pengguna bilang oke, simpan menggunakan action `save_recipe`.")
+        print(f"💡 Instruksi untuk AI: Tampilkan hasil ekstraksi AI di atas kepada pengguna persis seperti itu (sebagai draf). Jika pengguna bilang oke, simpan menggunakan action `save_recipe` dengan URL {url}.")
         
         try:
             client.files.delete(name=video_file.name)
@@ -560,11 +579,8 @@ def extract_tiktok_recipe(url):
         except:
             pass
             
-    except urllib.error.HTTPError as e:
-        print(f"SYSTEM_ERROR: Layanan ekstraksi TikTok pihak ketiga sedang mengalami gangguan. Error: {e}")
-        print("Instruksi untuk AI: Beritahu pengguna dengan sopan bahwa layanan ekstraksi sedang mati.")
     except Exception as e:
-        print(f"SYSTEM_ERROR: Terjadi kesalahan sistem saat memproses video TikTok: {e}")
+        print(f"SYSTEM_ERROR: Terjadi kesalahan sistem saat memproses video: {e}")
 
 def get_recipes():
     docs = db.collection('recipes').stream()
@@ -619,7 +635,7 @@ def main():
         'set_budget', 'get_balance', 'add_reminder', 'get_reminders', 'delete_reminder',
         'get_shopping_list', 'mark_bought', 'remove_shopping', 'clear_bought',
         'bought', 'get_expense_summary', 'weekly_report', 'delete_expense',
-        'save_recipe', 'extract_tiktok', 'get_recipes', 'read_recipe', 'delete_recipe'
+        'save_recipe', 'extract_video', 'get_recipes', 'read_recipe', 'delete_recipe'
     ])
     parser.add_argument('--doc_id', type=str, default="")
     parser.add_argument('--month', type=str, default="")
@@ -660,7 +676,7 @@ def main():
     elif args.action == 'get_expense_summary': get_expense_summary(args.month)
     elif args.action == 'weekly_report': get_weekly_report()
     elif args.action == 'save_recipe': save_recipe(args.name, args.ingredients, args.steps, args.url)
-    elif args.action == 'extract_tiktok': extract_tiktok_recipe(args.url)
+    elif args.action == 'extract_video': extract_video_recipe(args.url)
     elif args.action == 'get_recipes': get_recipes()
     elif args.action == 'read_recipe': read_recipe(args.name)
 
