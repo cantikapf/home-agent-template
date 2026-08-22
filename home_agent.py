@@ -115,6 +115,7 @@ def add_shopping_list(item, qty, unit=""):
         return
         
     # Auto-extract from URL if item is a link
+    import re
     url_match = re.search(r'(https?://[^\s]+)', item)
     if url_match:
         original_url = url_match.group(1)
