@@ -88,6 +88,20 @@ Untuk menjalankan proyek ini di mesin Anda, Anda membutuhkan:
    ```
    *(Sangat disarankan menjalankan daemon ini via `systemd` atau `pm2` agar berjalan di background).*
 
+
+## 🪄 Instalasi Otomatis via AI (Cursor, Claude, Antigravity)
+Malas melakukan setup manual? Jika Anda menggunakan *AI Coding Assistant* seperti **Cursor**, **Claude**, **Windsurf**, atau **Google Antigravity**, cukup berikan *prompt* (perintah) di bawah ini kepada AI Anda dan biarkan mereka yang mengerjakan semuanya:
+
+```text
+Tolong bantu saya menginstal proyek Home Agent dari repo https://github.com/cantikapf/home-agent-template.git.
+1. Clone repositori tersebut ke direktori ini.
+2. Buat virtual environment, aktifkan, dan install dependensi dari requirements.txt.
+3. Jalankan chmod +x setup.sh dan jalankan skrip tersebut.
+4. Beritahu saya cara mendapatkan Firebase Service Account Key dan Gemini API key, lalu tunggu saya menyediakannya.
+5. Setelah saya memberikan kodenya, tolong buatkan file firebase-credentials.json dan .env.
+6. Terakhir, jalankan `fast_daemon.py` di background dan pastikan tidak ada error.
+```
+
 ## 🏗️ Arsitektur
 
 - `home_agent.py`: Berisi seluruh logika bisnis (Firestore CRUD, Gemini Vision, dll).
