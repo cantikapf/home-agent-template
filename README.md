@@ -1,5 +1,7 @@
 # 🏡 Home Agent (WhatsApp Personal Assistant)
 
+*Read this in [English](README-en.md)*
+
 Selamat datang di repositori **Home Agent**, sebuah asisten rumah tangga pintar berbasis AI yang dapat diintegrasikan dengan WhatsApp Anda (via [Hermes Agent](https://github.com/cantikapf/hermes-agent)).
 
 Proyek ini dibangun untuk mengotomatisasi berbagai urusan rumah tangga harian, mulai dari memantau isi kulkas, mencatat keuangan, hingga mengekstrak resep masakan langsung dari video TikTok menggunakan *Multimodal AI*.
