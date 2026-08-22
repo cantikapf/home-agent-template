@@ -21,10 +21,10 @@ Jika pengguna bertanya "Masak apa hari ini?":
 
 ## 📱 TikTok & Ekstraksi Resep
 
-### Ekstrak Resep dari Tautan (URL TikTok)
+### Ekstrak Resep dari Tautan (URL TikTok / YouTube)
 **ATURAN KERAS**: JANGAN PERNAH membuat script Python buatan sendiri (seperti `python3 -c` atau `requests`) untuk membaca tautan. Anda WAJIB menggunakan ini:
 ```bash
-{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action extract_tiktok --url "<link_yang_diberikan>"
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action extract_video --url "<link_yang_diberikan>"
 ```
 Setelah mendapat hasil, buat draf resep dan tanyakan "Apakah boleh disimpan?". JANGAN simpan sebelum disetujui.
 
