@@ -115,8 +115,10 @@ def add_shopping_list(item, qty, unit=""):
         return
         
     # Auto-extract from URL if item is a link
-    if item.startswith('http://') or item.startswith('https://'):
-        original_url = item
+    url_match = re.search(r'(https?://[^\s]+)', item)
+    if url_match:
+        original_url = url_match.group(1)
+        item = original_url
         print(f"Mendeteksi URL, mencoba mengekstrak nama barang dari {original_url}...")
         try:
             import urllib.request, urllib.parse, re
@@ -124,24 +126,44 @@ def add_shopping_list(item, qty, unit=""):
             response = urllib.request.urlopen(req)
             final_url = response.geturl()
             
-            if 'shopee' in final_url or 'shp.ee' in final_url:
-                match = re.search(r'shopee\.co\.id/([^/]+)-i\.\d+', final_url)
-                if match:
-                    item = urllib.parse.unquote(match.group(1)).replace('-', ' ')
-                    item += f" (Shopee)"
-            elif 'tokopedia.com' in final_url:
-                match = re.search(r'tokopedia\.com/[^/]+/([^/?]+)', final_url)
-                if match:
-                    item = urllib.parse.unquote(match.group(1)).replace('-', ' ')
-                    item += f" (Tokopedia)"
+            html = response.read().decode('utf-8')
+            
+            # 1. Coba ambil dari og:title (Sering ada di Shopee / Tokopedia SPA)
+            match_og = re.search(r'<meta[^>]*property=["\']og:title["\'][^>]*content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+            # Kadang urutannya content dulu baru property
+            if not match_og:
+                match_og = re.search(r'<meta[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:title["\']', html, re.IGNORECASE)
+            
+            if match_og:
+                item = match_og.group(1).strip()
+                # Bersihkan embel-embel SEO
+                item = item.replace(' | Shopee Indonesia', '').replace(' | Tokopedia', '')
+                if item.startswith('Jual '):
+                    item = item[5:]
             else:
-                # Coba ambil title html
-                html = response.read().decode('utf-8')
-                match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
-                if match:
-                    item = match.group(1).strip()
+                # 2. Fallback ke regex URL Shopee (jika ada slug)
+                if 'shopee' in final_url or 'shp.ee' in final_url:
+                    match_slug = re.search(r'shopee\.co\.id/([^/]+)-i\.\d+', final_url)
+                    if match_slug:
+                        item = urllib.parse.unquote(match_slug.group(1)).replace('-', ' ')
+                # 3. Fallback ke regex URL Tokopedia
+                elif 'tokopedia.com' in final_url:
+                    match_slug = re.search(r'tokopedia\.com/[^/]+/([^/?]+)', final_url)
+                    if match_slug:
+                        item = urllib.parse.unquote(match_slug.group(1)).replace('-', ' ')
+                # 4. Fallback ke tag <title> biasa
                 else:
-                    item = "Barang dari Link"
+                    match_title = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
+                    if match_title:
+                        item = match_title.group(1).strip()
+                    else:
+                        item = "Barang dari Link"
+                        
+            # Tambahkan penanda platform untuk kejelasan daftar belanja
+            if 'shopee' in final_url.lower() and '(Shopee)' not in item:
+                item += " (Shopee)"
+            elif 'tokopedia' in final_url.lower() and '(Tokopedia)' not in item:
+                item += " (Tokopedia)"
         except Exception as e:
             print(f"Gagal mengekstrak link: {e}")
             item = "Barang dari Link"
