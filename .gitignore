@@ -1,0 +1,18 @@
+# Credentials
+*-credentials.json
+.env
+
+# Virtual Environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Generated skills
+/skills/
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/
