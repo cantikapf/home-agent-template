@@ -1,0 +1,40 @@
+name: Example Deploy to VPS
+
+on:
+  # push:
+  #   branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy Files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "home_agent.py,fast_cli.py,fast_daemon.py,reminder_worker.py,setup.sh,skills_template"
+          target: "~/github-deploy-temp"
+
+      - name: Apply Changes
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # WARNING: This is an example script. Adjust paths and service names for your environment!
+            mkdir -p ~/home-agent
+            cp -r ~/github-deploy-temp/* ~/home-agent/
+            
+            cd ~/home-agent
+            chmod +x setup.sh
+            ./setup.sh
+            
+            # systemctl --user restart home-agent-daemon.service
+            rm -rf ~/github-deploy-temp
