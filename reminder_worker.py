@@ -56,12 +56,43 @@ def check_reminders():
         })
         print(f"Reminded: {task}")
 
+def send_weekly_report():
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Sending automatic weekly report...")
+    # Panggil get_weekly_report dari home_agent via hermes-agent CLI
+    # Untuk lebih mudah, kita jalankan home_agent.py di terminal, tangkap outputnya, lalu kirim via WA
+    try:
+        import subprocess
+        python_bin = os.path.join(BASE_DIR, 'venv', 'bin', 'python')
+        if not os.path.exists(python_bin):
+            python_bin = 'python3'
+            
+        home_agent_script = os.path.join(BASE_DIR, 'home_agent.py')
+        result = subprocess.run([python_bin, home_agent_script, '--action', 'weekly_report'], capture_output=True, text=True)
+        if result.returncode == 0:
+            send_whatsapp_message(result.stdout)
+            print("Weekly report sent successfully.")
+        else:
+            print(f"Failed to generate weekly report: {result.stderr}")
+    except Exception as e:
+        print(f"Error sending weekly report: {e}")
+
 if __name__ == '__main__':
+    last_weekly_report_date = None
+    
     while True:
         try:
             check_reminders()
+            
+            # Cek Laporan Mingguan (Minggu jam 19:00)
+            now_local = datetime.now().astimezone()
+            if now_local.weekday() == 6 and now_local.hour == 19: # 6 = Minggu
+                current_date = now_local.strftime('%Y-%m-%d')
+                if last_weekly_report_date != current_date:
+                    send_weekly_report()
+                    last_weekly_report_date = current_date
+                    
         except Exception as e:
-            print(f"Error checking reminders: {e}")
+            print(f"Error in main loop: {e}")
         
         # Cek setiap 60 detik
         time.sleep(60)

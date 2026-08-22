@@ -242,10 +242,16 @@ def update_inventory(item, qty, action, unit=""):
     
     unit_str = f" {final_unit}" if final_unit else ""
     print(f"Stok {item} berhasil diperbarui. Stok saat ini: {new_qty}{unit_str}")
+    if new_qty <= 2:
+        shop_ref = db.collection('shopping_list').document(sanitize_id(item))
+        if not shop_ref.get().exists:
+            shop_ref.set({'item': item, 'quantity': 1, 'unit': final_unit, 'status': 'pending'})
+            print(f"🤖 (Auto-System): {item} otomatis ditambahkan ke daftar belanja karena stok menipis (≤2).")
+    
     if new_qty <= 0:
-        print(f"PENGUMUMAN: Stok {item} sudah habis! Tolong segera ingatkan pengguna untuk membelinya atau masukkan ke daftar belanja.")
+        print(f"PENGUMUMAN: Stok {item} sudah habis! Beritahu pengguna bahwa item telah ditambahkan ke daftar belanja.")
     elif new_qty <= 2:
-        print(f"⚠️ PERHATIAN: Stok {item} tinggal sedikit ({new_qty}{unit_str}). Sarankan pengguna untuk segera membeli lagi.")
+        print(f"⚠️ PERHATIAN: Stok {item} tinggal sedikit ({new_qty}{unit_str}).")
 
 def get_inventory():
     docs = db.collection('inventory').stream()
@@ -280,12 +286,41 @@ def get_expenses():
         data = doc.to_dict()
         amount = data.get('amount', 0)
         total += amount
-        result += f"- {data.get('category')}: Rp {amount:,.0f} ({data.get('description')})\n"
+        # Coba ambil timestamp, jika tidak ada fallback
+        ts = data.get('timestamp')
+        date_str = ""
+        if ts:
+            date_str = ts.astimezone().strftime('%d/%m %H:%M') + " - "
+        result += f"- [ID: {doc.id}] {date_str}{data.get('category')}: Rp {amount:,.0f} ({data.get('description')})\n"
     print(result if total > 0 else "Belum ada catatan pengeluaran.")
 
-def get_expense_summary():
-    month = get_current_month_str()
-    start_date, end_date = get_month_bounds(month)
+def delete_expense(doc_id):
+    if not doc_id or doc_id.lower() == 'last':
+        # Cari yang paling terakhir
+        docs = list(db.collection('expenses').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).stream())
+        if not docs:
+            print("Tidak ada pengeluaran yang bisa dihapus.")
+            return
+        doc_id = docs[0].id
+        data = docs[0].to_dict()
+    else:
+        doc = db.collection('expenses').document(doc_id).get()
+        if not doc.exists:
+            print(f"Pengeluaran dengan ID {doc_id} tidak ditemukan.")
+            return
+        data = doc.to_dict()
+
+    db.collection('expenses').document(doc_id).delete()
+    print(f"🗑️ Pengeluaran berhasil dihapus: {data.get('category')} - Rp {data.get('amount', 0):,.0f} ({data.get('description')})")
+
+
+def get_expense_summary(month_str=""):
+    month = month_str if month_str else get_current_month_str()
+    try:
+        start_date, end_date = get_month_bounds(month)
+    except Exception as e:
+        print(f"Format bulan salah. Gunakan YYYY-MM. Error: {e}")
+        return
     
     docs = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
     
@@ -413,6 +448,35 @@ def add_reminder(task, time_str):
     except Exception as e:
         print(f"Format waktu gagal dipahami. Gagal menyimpan pengingat. Minta pengguna menyebutkan waktu spesifik YYYY-MM-DD HH:MM. Error: {e}")
 
+def get_reminders():
+    docs = db.collection('reminders').where('status', '==', 'pending').order_by('timestamp').stream()
+    items = []
+    for doc in docs:
+        data = doc.to_dict()
+        ts = data.get('timestamp')
+        time_str = ts.astimezone().strftime('%d/%m/%Y %H:%M') if ts else data.get('time_str')
+        items.append(f"- {time_str} : {data.get('task')}")
+    
+    if items:
+        print("⏰ DAFTAR PENGINGAT AKTIF:")
+        for item in items:
+            print(item)
+    else:
+        print("Tidak ada pengingat yang sedang aktif.")
+
+def delete_reminder(task_name):
+    docs = db.collection('reminders').where('status', '==', 'pending').stream()
+    deleted = False
+    for doc in docs:
+        data = doc.to_dict()
+        if task_name.lower() in data.get('task', '').lower():
+            doc.reference.delete()
+            print(f"🗑️ Pengingat '{data.get('task')}' berhasil dibatalkan.")
+            deleted = True
+            break
+    if not deleted:
+        print(f"❌ Pengingat '{task_name}' tidak ditemukan.")
+
 def save_recipe(name, ingredients, steps, source_url=""):
     doc_ref = db.collection('recipes').document()
     doc_ref.set({
@@ -535,15 +599,30 @@ def read_recipe(name):
     if not found:
         print(f"❌ Resep dengan nama '{name}' tidak ditemukan di Buku Resep.")
 
+def delete_recipe(name):
+    docs = db.collection('recipes').stream()
+    deleted = False
+    for doc in docs:
+        data = doc.to_dict()
+        if name.lower() in data.get('name', '').lower():
+            doc.reference.delete()
+            print(f"🗑️ Resep '{data.get('name')}' berhasil dihapus.")
+            deleted = True
+            break
+    if not deleted:
+        print(f"❌ Resep dengan nama '{name}' tidak ditemukan untuk dihapus.")
+
 def main():
     parser = argparse.ArgumentParser(description="Home Agent CLI")
     parser.add_argument('--action', required=True, choices=[
         'expense', 'shopping', 'inventory', 'recipe', 'get_inventory', 'get_expenses', 
-        'set_budget', 'get_balance', 'add_reminder',
+        'set_budget', 'get_balance', 'add_reminder', 'get_reminders', 'delete_reminder',
         'get_shopping_list', 'mark_bought', 'remove_shopping', 'clear_bought',
-        'bought', 'get_expense_summary', 'weekly_report',
-        'save_recipe', 'extract_tiktok', 'get_recipes', 'read_recipe'
+        'bought', 'get_expense_summary', 'weekly_report', 'delete_expense',
+        'save_recipe', 'extract_tiktok', 'get_recipes', 'read_recipe', 'delete_recipe'
     ])
+    parser.add_argument('--doc_id', type=str, default="")
+    parser.add_argument('--month', type=str, default="")
     parser.add_argument('--amount', type=float, default=0)
     parser.add_argument('--category', type=str, default="")
     parser.add_argument('--desc', type=str, default="")
@@ -561,6 +640,10 @@ def main():
     args = parser.parse_args()
 
     if args.action == 'expense': add_expense(args.amount, args.category, args.desc)
+    elif args.action == 'delete_expense': delete_expense(args.doc_id)
+    elif args.action == 'get_reminders': get_reminders()
+    elif args.action == 'delete_reminder': delete_reminder(args.task)
+    elif args.action == 'delete_recipe': delete_recipe(args.name)
     elif args.action == 'shopping': add_shopping_list(args.item, args.qty, args.unit)
     elif args.action == 'inventory': update_inventory(args.item, args.qty, args.inv_action, args.unit)
     elif args.action == 'recipe': generate_recipe(args.ingredients)
@@ -574,7 +657,7 @@ def main():
     elif args.action == 'remove_shopping': remove_shopping_item(args.item)
     elif args.action == 'clear_bought': clear_shopping_list()
     elif args.action == 'bought': bought(args.item, args.qty, args.amount, args.category, args.unit)
-    elif args.action == 'get_expense_summary': get_expense_summary()
+    elif args.action == 'get_expense_summary': get_expense_summary(args.month)
     elif args.action == 'weekly_report': get_weekly_report()
     elif args.action == 'save_recipe': save_recipe(args.name, args.ingredients, args.steps, args.url)
     elif args.action == 'extract_tiktok': extract_tiktok_recipe(args.url)
