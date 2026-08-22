@@ -6,13 +6,42 @@ Selamat datang di repositori **Home Agent**, sebuah asisten rumah tangga pintar 
 
 Proyek ini dibangun untuk mengotomatisasi berbagai urusan rumah tangga harian, mulai dari memantau isi kulkas, mencatat keuangan, hingga mengekstrak resep masakan langsung dari video TikTok menggunakan *Multimodal AI*.
 
-## ✨ Fitur Utama
+## ✨ Fitur Lengkap
 
-- 🛒 **Manajemen Daftar Belanja:** Menambah dan mencatat barang-barang yang perlu dibeli.
-- 📦 **Inventaris Kulkas & Dapur:** Memantau stok bahan makanan secara *real-time*. AI akan memberikan peringatan jika bahan untuk resep tertentu tidak tersedia.
-- 🍳 **Buku Resep Pintar:** Menyimpan daftar resep favorit Anda. AI bisa menyarankan resep berdasarkan stok bahan!
-- 🎥 **Ekstraksi Resep TikTok:** Kemampuan super untuk "menonton" video resep TikTok menggunakan *Multimodal AI* (Gemini), mengekstrak bahan dan cara pembuatannya, lalu menyimpannya ke Buku Resep.
-- 💸 **Pencatatan Pengeluaran:** Memantau pengeluaran harian/mingguan untuk kebutuhan rumah.
+🤖 **Sistem AI & Otomatisasi**
+- **Multimodal AI:** Terintegrasi dengan Gemini Vision untuk menganalisis gambar dan video.
+- **Daemon Cepat:** Menggunakan Unix Socket Server (`fast_daemon.py`) agar respon AI kilat tanpa memuat ulang Python/Firebase dari awal.
+- **Auto-Shopping List:** Otomatis memasukkan barang ke daftar belanja jika mendeteksi stok dapur menipis (≤ 2).
+- **Laporan Otomatis:** Mengirimkan rekap keuangan mingguan secara otomatis setiap hari Minggu pukul 19:00.
+
+💸 **Manajemen Keuangan**
+- Mencatat pengeluaran harian beserta deskripsi dan kategorinya.
+- Menetapkan batas *budget* bulanan.
+- Mengecek sisa uang dan persentase penggunaan *budget*.
+- Melihat ringkasan pengeluaran bulan ini atau bulan-bulan sebelumnya.
+- **Undo/Hapus:** Membatalkan atau menghapus pengeluaran jika salah ketik.
+
+📦 **Inventaris Kulkas & Dapur**
+- Memantau stok bahan makanan (tambah/kurang) secara *real-time*.
+- Cek ketersediaan semua barang di dapur dalam satu perintah.
+- **Combo Cerdas:** Saat Anda melapor "sudah beli [barang]", bot otomatis melakukan 3 hal: mencoretnya dari daftar belanja, menambah stok dapur, dan mencatatnya sebagai pengeluaran.
+
+🛒 **Daftar Belanja**
+- Menambah dan menghapus barang dari daftar belanja.
+- Melihat daftar barang yang berstatus *pending* (belum dibeli).
+- Membersihkan keranjang dari barang yang sudah dibeli.
+
+🍳 **Buku Resep & TikTok**
+- **Ekstrak Resep TikTok:** Kirimkan URL video masakan TikTok, dan AI akan "menontonnya" untuk menyalin resep dan cara membuatnya!
+- Menyimpan resep favorit ke Buku Resep *database*.
+- Melihat dan membaca ulang detail resep.
+- Menghapus resep yang tidak disukai.
+- **AI Chef:** Meminta AI membuatkan ide masakan kreatif berdasarkan stok bahan sisa di kulkas Anda.
+
+⏰ **Pengingat (Reminders)**
+- Membuat jadwal/alarm untuk urusan rumah (contoh: "ingatkan beli token listrik besok jam 10").
+- Melihat daftar pengingat yang sedang aktif/berjalan.
+- Membatalkan pengingat yang tidak lagi dibutuhkan.
 
 ## 🛠️ Prasyarat (Prerequisites)
 
