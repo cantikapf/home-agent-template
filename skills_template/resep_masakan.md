@@ -1,6 +1,6 @@
 ---
 name: resep_masakan
-description: Mencari ide resep, mengekstrak resep dari link TikTok, dan membaca detail buku resep
+description: Mencari ide resep, mengekstrak resep dari link TikTok, membaca dan menghapus detail buku resep
 ---
 # Instructions
 Anda bertugas membantu mencari ide masakan dan mengekstrak resep.
@@ -41,4 +41,10 @@ Setelah mendapat hasil, buat draf resep dan tanyakan "Apakah boleh disimpan?". J
 ### Baca Detail Resep
 ```bash
 {{PYTHON_BIN}} {{FAST_CLI_PATH}} --action read_recipe --name "<nama resep>"
+```
+
+### Hapus Resep dari Buku
+Jika pengguna meminta menghapus resep yang salah atau tidak disukai:
+```bash
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action delete_recipe --name "<nama resep>"
 ```
