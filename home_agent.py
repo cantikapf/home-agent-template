@@ -301,6 +301,9 @@ def update_inventory(item, qty, action, unit=""):
     if action == 'use':
         doc = doc_ref.get()
         current_qty = doc.to_dict().get('quantity', 0) if doc.exists else 0
+        if current_qty <= 0:
+            print(f"⚠️ Stok {item} sudah habis (0). Tidak ada yang bisa dikurangi.")
+            return
         if current_qty < qty:
             print(f"⚠️ Stok {item} tidak cukup. Saat ini hanya ada {current_qty}. Dikurangi menjadi 0.")
             qty = current_qty  # Kurangi hanya sampai 0
