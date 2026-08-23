@@ -14,6 +14,31 @@ Proyek ini dibangun untuk mengotomatisasi berbagai urusan rumah tangga harian, m
 - ⏰ **Pengingat & Laporan Mingguan:** Atur pengingat/alarm (reminder), serta laporan mingguan otomatis (pengeluaran, sisa budget, stok habis) setiap hari Minggu jam 19:00.
 - 📝 **TL;DR & Session Recap:** Rangkum teks artikel/chat yang panjang, atau minta AI memberikan rangkuman seluruh pekerjaan yang sudah diselesaikan pada sesi saat ini.
 
+## 📊 Arsitektur & Workflow Agent
+
+Berikut adalah visualisasi alur kerja bagaimana asisten pintar ini beroperasi, mulai dari pesan masuk di WhatsApp hingga penyimpanan data di cloud:
+
+```mermaid
+sequenceDiagram
+    participant User as 📱 WhatsApp (User)
+    participant Hermes as 🤖 Hermes Agent (Node.js)
+    participant CLI as ⌨️ Fast CLI (Python)
+    participant Daemon as ⚙️ Fast Daemon (Socket)
+    participant Gemini as 🧠 Gemini AI (Multimodal)
+    participant Firebase as 🗄️ Firestore (Database)
+
+    User->>Hermes: Kirim Pesan / Foto / Video
+    Hermes->>Gemini: Analisis Intent & Ekstraksi Prompt (RAG)
+    Gemini-->>Hermes: Tentukan Tool (Misal: "Beli Susu")
+    Hermes->>CLI: Eksekusi Tool (fast_cli.py --action shopping --item Susu)
+    CLI->>Daemon: Kirim via Unix Socket (Tanpa Cold Start)
+    Daemon->>Firebase: Simpan "Susu" ke Koleksi shopping_list
+    Firebase-->>Daemon: Konfirmasi Sukses
+    Daemon-->>CLI: Return Output (String/JSON)
+    CLI-->>Hermes: Output Eksekusi Tool
+    Hermes->>User: Balas WhatsApp ("Susu berhasil dicatat!")
+```
+
 ## 🛠️ Teknologi yang Digunakan
 
 - **AI Engine:** Google Gemini (Gemini 2.5 Flash & Flash-Lite) melalui kerangka kerja **Hermes Agent**.
