@@ -1,118 +1,63 @@
 # 🏡 Home Agent (WhatsApp Personal Assistant)
 
-*Baca terjemahan dalam [Bahasa Indonesia](README.md)*
+*[Baca dalam Bahasa Indonesia](README.md)*
 
-Welcome to the **Home Agent** repository, a smart AI-powered home assistant integrated directly with your WhatsApp (via [Hermes Agent](https://github.com/cantikapf/hermes-agent)).
+Home Agent is an AI-powered personal assistant I built to handle those trivial-yet-important household chores, right from WhatsApp.
 
-This project was built to automate daily household chores, from monitoring fridge inventory, tracking financial expenses, to extracting cooking recipes directly from TikTok videos using *Multimodal AI*.
+Tired of checking an empty fridge? Too lazy to type out a recipe from a TikTok video? Or maybe you just want to track your daily expenses by snapping a photo of your grocery receipt? Well, this bot does all of that for you.
 
-## ✨ Comprehensive Features
+## ✨ Key Features
 
-🤖 **AI & Automation System**
-- **Multimodal AI:** Integrated with Gemini Vision to analyze images and videos.
-- **Fast Daemon:** Uses a Unix Socket Server (`fast_daemon.py`) for lightning-fast AI responses without cold-starting Python/Firebase.
-- **Auto-Shopping List:** Automatically adds items to your shopping list when kitchen stock runs low (≤ 2).
-- **Automated Reports:** Sends a weekly financial summary automatically every Sunday at 19:00.
+- 🛒 **Smart Shopping List:** It doesn't just take notes. Send a link from Shopee or Tokopedia, and the bot will automatically extract the product name for you.
+- 🧾 **Snap a Receipt (Vision AI):** Too lazy to log expenses one by one? Just snap a photo of your grocery receipt. The AI will read the prices, calculate the total, and categorize the expense automatically.
+- ❄️ **Fridge & Pantry Management:** Keep track of your food stock. When supplies run low, the bot will remind you and automatically add those items to your shopping list.
+- 🍳 **Smart Recipe Book & TikTok Extractor:** Got a recipe video from TikTok/YouTube? Just send the link (or the video). The Multimodal AI will watch it and save the ingredients and cooking steps straight into your recipe database.
+- 💰 **Monthly Budgeting:** Keep an eye on your wallet. Every time you log an expense, the bot tells you your remaining monthly budget balance.
+- ⏰ **Reminders & Weekly Reports:** Set reminders for anything. Plus, every Sunday at 7 PM, the bot sends an automated weekly report (expenses, remaining budget, and low stock alerts).
+- 📝 **TL;DR:** Ask the bot to summarize long articles or chats to save you time.
 
-💸 **Financial Management**
-- Record daily expenses with descriptions and categories.
-- Set monthly budget limits.
-- Check remaining balance and budget usage percentages.
-- View expense summaries for the current or previous months.
-- **Undo/Delete:** Cancel or delete an expense if you made a typo.
+## 📊 How Does It Work? (Architecture)
 
-📦 **Fridge & Kitchen Inventory**
-- Monitor grocery stocks (add/use) in *real-time*.
-- Check the availability of all kitchen items in one command.
-- **Smart Combo:** When you report "I bought [item]", the bot automatically does 3 things: crosses it off the shopping list, adds it to the kitchen stock, and records it as an expense.
+To prevent slow replies and *cold starts*, I built the architecture using a *socket daemon*. This keeps Firebase and the AI models on standby in the server's memory. When a chat comes in, execution is lightning-fast!
 
-🛒 **Shopping List**
-- Add and remove items from the shopping list.
-- View pending items you need to buy.
-- Clear the cart of already purchased items.
+```mermaid
+sequenceDiagram
+    participant User as 📱 WhatsApp (User)
+    participant Hermes as 🤖 Hermes Agent (Node.js)
+    participant CLI as ⌨️ Fast CLI (Python)
+    participant Daemon as ⚙️ Fast Daemon (Socket)
+    participant Gemini as 🧠 Gemini AI (Multimodal)
+    participant Firebase as 🗄️ Firestore (Database)
 
-🍳 **Recipe Book & TikTok**
-- **TikTok Recipe Extraction:** Send a TikTok cooking video URL, and the AI will "watch" it to extract the ingredients and steps!
-- Save favorite recipes to your Recipe Book database.
-- View and re-read recipe details.
-- Delete recipes you no longer like.
-- **AI Chef:** Ask the AI to brainstorm creative cooking ideas based on leftover ingredients in your fridge.
-
-⏰ **Reminders**
-- Schedule alarms for household chores (e.g., "remind me to buy electricity tokens tomorrow at 10 AM").
-- View a list of all active/pending reminders.
-- Cancel reminders that are no longer needed.
-
-## 🛠️ Prerequisites
-
-To run this project on your machine, you will need:
-
-1. **Python 3.10+** installed on your system.
-2. **Hermes Agent** (or a similar WhatsApp bot framework that supports command-line tool execution).
-3. **Google Gemini API Key** (Free from Google AI Studio).
-4. **Firebase Firestore Database** (Free tier on Google Cloud/Firebase).
-   - Create a new Firebase project.
-   - Initialize a Firestore Database.
-   - Generate a *Service Account Key* (Settings > Service Accounts > Generate new private key).
-
-## 🚀 Installation & Setup
-
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/cantikapf/home-agent-template.git
-   cd home-agent-template
-   ```
-
-2. **Run the Setup Script:**
-   This script will install all dependencies and dynamically replace configuration paths to match your current directory.
-   ```bash
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-
-3. **Configure Credentials:**
-   - Rename your Firebase Service Account Key file to `firebase-credentials.json` and place it in the root of this project.
-   - Open the `.env` file and insert your `GEMINI_API_KEY`.
-
-4. **Integrate with Hermes Agent:**
-   - A `skills/` folder will be generated (containing Markdown instructions for the AI).
-   - Move or copy the contents of this `skills/` folder to your Hermes bot's skills directory (e.g., `~/.hermes/skills/home-agent/`).
-
-5. **Run the Socket Daemon:**
-   This project uses a lightning-fast *socket daemon* (`fast_daemon.py`) so the Python model and Firebase libraries don't have to reload on every incoming WhatsApp message.
-   ```bash
-   # Activate virtual environment
-   source venv/bin/activate
-   # Run the daemon
-   python fast_daemon.py
-   ```
-   *(It is highly recommended to run this daemon via `systemd` or `pm2` to keep it running in the background).*
-
-
-## 🪄 Automated Installation via AI (Cursor, Claude, Antigravity)
-Don't want to set things up manually? If you use an *AI Coding Assistant* like **Cursor**, **Claude**, **Windsurf**, or **Google Antigravity**, just copy and paste the prompt below into your AI chat and let it do the heavy lifting:
-
-```text
-Please help me install the Home Agent project from https://github.com/cantikapf/home-agent-template.git.
-1. Clone the repository into this directory.
-2. Create a virtual environment, activate it, and install dependencies from requirements.txt.
-3. Make setup.sh executable (chmod +x) and run it.
-4. Guide me on how to get my Firebase Service Account Key and Gemini API key, then wait for my input.
-5. Once I provide them, create the firebase-credentials.json and .env files for me.
-6. Finally, run `fast_daemon.py` in the background and verify there are no errors.
+    User->>Hermes: Chat / Photo / Video
+    Hermes->>Gemini: Understand intent & extract instructions
+    Gemini-->>Hermes: Determine Tool (e.g., "Log Milk Purchase")
+    Hermes->>CLI: Execute Tool (fast_cli.py --action shopping --item Milk)
+    CLI->>Daemon: Send via Unix Socket (Instant)
+    Daemon->>Firebase: Save "Milk" to database
+    Firebase-->>Daemon: Success
+    Daemon-->>CLI: Return result
+    CLI-->>Hermes: Tool execution output
+    Hermes->>User: Reply WA ("Milk logged successfully! ✅")
 ```
 
-## 🏗️ Architecture
+## 🛠️ Tech Stack
 
-- `home_agent.py`: Contains all business logic (Firestore CRUD, Gemini Vision integration, etc.).
-- `fast_daemon.py`: A Unix socket server that loads `home_agent.py` into memory, making command execution significantly faster by eliminating cold-start overhead.
-- `fast_cli.py`: A lightweight CLI client called by Hermes Agent. It forwards terminal arguments to the daemon via the socket.
-- `reminder_worker.py`: A background worker that polls Firestore for scheduled reminders every 60 seconds.
-- `skills_template/`: Prompt templates for the AI. This is converted into the `skills/` directory when running `setup.sh`.
+- **AI Engine:** Google Gemini (Gemini 2.5 Flash & Flash-Lite) handled by the **Hermes Agent** framework.
+- **WhatsApp Bridge:** Node.js (via Baileys).
+- **Database:** Firebase Firestore (GCP).
+- **Hosting:** Oracle Cloud VPS (Ubuntu).
+- **CI/CD:** GitHub Actions.
 
-## 🤝 Contributing
+## 🚀 CI/CD Pipeline (Auto-Deploy)
 
-Feel free to open an *Issue* or submit a *Pull Request* if you find bugs or want to add new features! Community contributions are highly welcomed.
+Whenever code changes are pushed to the `main` branch, GitHub Actions automatically triggers a runner to SSH into the VPS, pull the latest code, and restart the bot service. No more tedious manual SSH just to update a feature.
 
-## 📄 License
-[MIT License](LICENSE)
+## 🔒 Security & Credentials Setup
+
+Don't worry, sensitive data like `.env`, Firebase `.json` credentials, and SSH `.key` files are securely blocked by `.gitignore`.
+
+If you want to run or fork this bot locally:
+1. Copy `.env.example` to `.env` and insert your Gemini API Key.
+2. Place your Firebase service account file (`firebase-credentials.json`) in the root folder.
+3. Set up and run the Python daemon!
