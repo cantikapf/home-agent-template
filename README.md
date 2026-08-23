@@ -1,22 +1,22 @@
 # 🏡 Home Agent (WhatsApp Personal Assistant)
 
-Selamat datang di repositori **Home Agent**, sebuah asisten rumah tangga pintar berbasis AI (Artificial Intelligence) yang terintegrasi langsung dengan WhatsApp Anda.
+Home Agent adalah bot asisten pribadi berbasis AI yang saya bikin untuk ngurusin hal-hal remeh tapi penting di rumah tangga, langsung dari chat WhatsApp.
 
-Proyek ini dibangun untuk mengotomatisasi berbagai urusan rumah tangga harian, mulai dari memantau isi kulkas hingga mengekstrak resep masakan langsung dari video TikTok!
+Capek ngecek kulkas kosong? Males ngetik ulang resep dari video TikTok? Atau pengen nyatet pengeluaran harian cuma modal foto struk belanja? Nah, bot ini yang bakal ngerjain itu semua.
 
 ## ✨ Fitur Utama
 
-- 🛒 **Manajemen Daftar Belanja:** Menambah, menghapus, dan mencatat daftar belanja. Dilengkapi ekstraksi otomatis nama produk dari URL e-commerce (Shopee & Tokopedia) mem-bypass skeleton SPA.
-- 📸 **Pembacaan Struk Belanja (Vision AI):** AI bisa "melihat" dan membaca foto struk belanja, mengekstrak harga, dan mengkategorikan pengeluaran secara otomatis.
-- 📦 **Inventaris Kulkas & Dapur:** Memantau stok bahan makanan secara *real-time* dan otomatis memasukkan barang ke daftar belanja jika stok menipis.
-- 🍳 **Buku Resep Pintar & Ekstraktor Video:** Ekstrak bahan dan cara pembuatan resep langsung dari video TikTok/YouTube menggunakan *Multimodal AI* (anti-bot protection bypass).
-- 💸 **Pencatatan Keuangan & Budgeting:** Pantau budget bulanan, catat pengeluaran harian, dan lihat persentase pemakaian saldo (mendukung spesifik bulan).
-- ⏰ **Pengingat & Laporan Mingguan:** Atur pengingat/alarm (reminder), serta laporan mingguan otomatis (pengeluaran, sisa budget, stok habis) setiap hari Minggu jam 19:00.
-- 📝 **TL;DR & Session Recap:** Rangkum teks artikel/chat yang panjang, atau minta AI memberikan rangkuman seluruh pekerjaan yang sudah diselesaikan pada sesi saat ini.
+- 🛒 **Daftar Belanja Pintar:** Gak cuma nyatet belanjaan biasa, kalau kamu kirim link dari Shopee atau Tokopedia, bot bisa langsung nge-ekstrak nama barangnya otomatis.
+- 🧾 **Tinggal Foto Struk (Vision AI):** Malas nyatet pengeluaran satu-satu? Foto aja struk belanjanya. AI bakal baca harganya, nge-total, dan masukin ke kategori pengeluaran yang pas.
+- ❄️ **Manajemen Kulkas & Dapur:** Cek sisa stok bahan makanan. Kalau udah mau habis, bot bakal ngingetin dan otomatis masukin barang itu ke daftar belanjaan.
+- 🍳 **Buku Resep & TikTok Extractor:** Punya video resep dari TikTok/YouTube? Kirim aja link-nya (atau videonya). Multimodal AI bakal nonton videonya dan nyatet bahan serta cara masaknya ke database resep kamu.
+- 💰 **Budgeting Bulanan:** Pantau terus dompet bulanan kamu. Setiap nyatet pengeluaran, bot ngasih tahu sisa saldo budget bulan ini.
+- ⏰ **Reminder & Weekly Report:** Bisa di-set buat ngingetin sesuatu. Plus, tiap hari Minggu jam 7 malam, bot bakal ngirim laporan mingguan (pengeluaran minggu ini, sisa budget, stok kulkas yang menipis).
+- 📝 **TL;DR:** Minta bot buat ngerangkum chat atau artikel panjang biar hemat waktu.
 
-## 📊 Arsitektur & Workflow Agent
+## 📊 Gimana Cara Kerjanya? (Arsitektur)
 
-Berikut adalah visualisasi alur kerja bagaimana asisten pintar ini beroperasi, mulai dari pesan masuk di WhatsApp hingga penyimpanan data di cloud:
+Biar gak lemot dan *cold start*, saya bikin arsitekturnya pakai *daemon socket*. Jadi, Firebase dan AI model-nya tetap *standby* di memori server. Kalau ada chat masuk, eksekusinya kilat!
 
 ```mermaid
 sequenceDiagram
@@ -27,49 +27,35 @@ sequenceDiagram
     participant Gemini as 🧠 Gemini AI (Multimodal)
     participant Firebase as 🗄️ Firestore (Database)
 
-    User->>Hermes: Kirim Pesan / Foto / Video
-    Hermes->>Gemini: Analisis Intent & Ekstraksi Prompt (RAG)
-    Gemini-->>Hermes: Tentukan Tool (Misal: "Beli Susu")
+    User->>Hermes: Chat / Foto / Video
+    Hermes->>Gemini: Pahami maksud chat & ekstrak instruksi
+    Gemini-->>Hermes: Tentukan Tool (Misal: "Catat Belanja Susu")
     Hermes->>CLI: Eksekusi Tool (fast_cli.py --action shopping --item Susu)
-    CLI->>Daemon: Kirim via Unix Socket (Tanpa Cold Start)
-    Daemon->>Firebase: Simpan "Susu" ke Koleksi shopping_list
-    Firebase-->>Daemon: Konfirmasi Sukses
-    Daemon-->>CLI: Return Output (String/JSON)
-    CLI-->>Hermes: Output Eksekusi Tool
-    Hermes->>User: Balas WhatsApp ("Susu berhasil dicatat!")
+    CLI->>Daemon: Kirim via Unix Socket (Proses Instan)
+    Daemon->>Firebase: Simpan "Susu" ke database
+    Firebase-->>Daemon: Sukses
+    Daemon-->>CLI: Return hasil
+    CLI-->>Hermes: Output eksekusi
+    Hermes->>User: Balas WA ("Susu berhasil dicatat! ✅")
 ```
 
-## 🛠️ Teknologi yang Digunakan
+## 🛠️ Tech Stack
 
-- **AI Engine:** Google Gemini (Gemini 2.5 Flash & Flash-Lite) melalui kerangka kerja **Hermes Agent**.
-- **WhatsApp Bridge:** Node.js (menggunakan *library* Baileys).
-- **Database:** Firebase Firestore (Google Cloud Platform).
-- **Server / Hosting:** Oracle Cloud Infrastructure (OCI) - Ubuntu VPS.
+- **AI Engine:** Google Gemini (Gemini 2.5 Flash & Flash-Lite) di-handle oleh framework **Hermes Agent**.
+- **WhatsApp Bridge:** Node.js (via Baileys).
+- **Database:** Firebase Firestore (GCP).
+- **Hosting:** Oracle Cloud VPS (Ubuntu).
 - **CI/CD:** GitHub Actions.
 
-## 🚀 CI/CD Pipeline (Cara Deploy Kode)
+## 🚀 CI/CD Pipeline (Auto-Deploy)
 
-Repositori ini telah dilengkapi dengan sistem *Continuous Integration / Continuous Deployment* (CI/CD) yang sepenuhnya otomatis.
+Setiap ada perubahan kode yang di-push ke branch `main`, GitHub Actions bakal otomatis nge-trigger *runner* masuk ke VPS (via SSH), narik kode terbaru, dan nge-restart service bot di server. Jadi gak perlu repot *remote* server tiap kali ada *update* fitur.
 
-Setiap kali ada perubahan pada file kode (misalnya home_agent.py atau AGENTS.md), Anda **TIDAK PERLU** lagi masuk (SSH) ke dalam VPS atau melakukan *upload* manual (SCP/FTP). 
+## 🔒 Security & Setup Kredensial
 
-**Cukup lakukan langkah berikut di lokal:**
-```bash
-git add .
-git commit -m "Deskripsi perubahan kode"
-git push origin main
-```
-Dalam hitungan detik, GitHub Actions akan secara otomatis:
-1. Masuk secara aman ke mesin Oracle VPS Anda.
-2. Memperbarui file-file yang berubah.
-3. Melakukan *restart* pada layanan hermes-gateway.service.
-4. Bot WhatsApp Anda akan langsung menggunakan versi kode terbaru!
+Tenang, data rahasia kayak `.env`, file kredensial `.json` dari Firebase, dan *private key* SSH (`.key`) udah aman di-block sama `.gitignore`.
 
-## 🔐 Keamanan Data (Security)
-
-Repositori ini berstatus **Private**. Beberapa file sangat rahasia dan telah diblokir secara permanen oleh .gitignore agar tidak bocor, yaitu:
-- File kunci SSH (*.key)
-- Kredensial Firebase Cloud (*.json)
-- Konfigurasi environment (.env)
-
-Harap pastikan file-file di atas tetap berada di lokal/mesin VPS dan jangan pernah dihapus dari .gitignore.
+Kalau kamu mau jalanin atau me- *fork* bot ini di komputer sendiri:
+1. Copy `.env.example` jadi `.env` lalu masukin API Key Gemini kamu.
+2. Letakkan file *service account* Firebase kamu (`firebase-credentials.json`) di folder *root*.
+3. Setup dan jalankan *daemon* Python-nya!
