@@ -11,6 +11,7 @@ import urllib.parse
 import time
 from datetime import datetime, timezone
 import dateutil.parser # type: ignore
+import uuid
 
 # Inisialisasi Firebase
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,11 +45,11 @@ def get_month_bounds(month_str):
     end_date = next_month_local.replace(tzinfo=datetime.now().astimezone().tzinfo).astimezone(timezone.utc)
     return start_date, end_date
 
-def set_budget(amount):
+def set_budget(amount, month_str=""):
     if amount < 0:
         print("Error: Budget tidak boleh negatif.")
         return
-    month = get_current_month_str()
+    month = month_str if month_str else get_current_month_str()
     doc_ref = db.collection('budgets').document(month)
     doc_ref.set({
         'amount': float(amount),
@@ -57,8 +58,8 @@ def set_budget(amount):
     })
     print(f"Budget untuk bulan {month} berhasil diatur menjadi Rp {amount:,.0f}")
 
-def get_balance():
-    month = get_current_month_str()
+def get_balance(month_str=""):
+    month = month_str if month_str else get_current_month_str()
     budget_doc = db.collection('budgets').document(month).get()
     budget = budget_doc.to_dict().get('amount', 0) if budget_doc.exists else 0
         
@@ -124,7 +125,7 @@ def add_shopping_list(item, qty, unit=""):
         try:
             import urllib.request, urllib.parse, re
             req = urllib.request.Request(item, headers={'User-Agent': 'Mozilla/5.0'})
-            response = urllib.request.urlopen(req)
+            response = urllib.request.urlopen(req, timeout=15)
             final_url = response.geturl()
             
             html = response.read().decode('utf-8')
@@ -158,7 +159,7 @@ def add_shopping_list(item, qty, unit=""):
                     if match_title:
                         item = match_title.group(1).strip()
                     else:
-                        item = "Barang dari Link"
+                        item = f"Barang dari Link ({uuid.uuid4().hex[:6]})"
                         
             # Tambahkan penanda platform untuk kejelasan daftar belanja
             if 'shopee' in final_url.lower() and '(Shopee)' not in item:
@@ -167,7 +168,7 @@ def add_shopping_list(item, qty, unit=""):
                 item += " (Tokopedia)"
         except Exception as e:
             print(f"Gagal mengekstrak link: {e}")
-            item = "Barang dari Link"
+            item = f"Barang dari Link ({uuid.uuid4().hex[:6]})"
 
     doc_ref = db.collection('shopping_list').document(sanitize_id(item))
     data = {'item': item, 'quantity': qty, 'status': 'pending'}
@@ -289,8 +290,20 @@ def update_inventory(item, qty, action, unit=""):
     if qty < 0:
         print("Error: Kuantitas tidak boleh negatif.")
         return
+    
+    if action not in ('add', 'use'):
+        print(f"Error: Action '{action}' tidak valid. Gunakan 'add' atau 'use'.")
+        return
         
     doc_ref = db.collection('inventory').document(sanitize_id(item))
+    
+    # Cek stok saat ini jika action == 'use' untuk mencegah stok negatif
+    if action == 'use':
+        doc = doc_ref.get()
+        current_qty = doc.to_dict().get('quantity', 0) if doc.exists else 0
+        if current_qty < qty:
+            print(f"⚠️ Stok {item} tidak cukup. Saat ini hanya ada {current_qty}. Dikurangi menjadi 0.")
+            qty = current_qty  # Kurangi hanya sampai 0
     
     inc_val = float(qty) if action == 'add' else -float(qty)
     data = {'item': item, 'updated_at': firestore.SERVER_TIMESTAMP, 'quantity': firestore.Increment(inc_val)}
@@ -615,8 +628,16 @@ def extract_video_recipe(url):
         
         video_file = client.files.upload(file=video_path)
         
+        # Timeout setelah 120 detik (60 iterasi x 2 detik)
+        max_wait = 60
+        wait_count = 0
         while video_file.state.name == 'PROCESSING':
             time.sleep(2)
+            wait_count += 1
+            if wait_count >= max_wait:
+                print("❌ Timeout: Pemrosesan video terlalu lama (>2 menit). Coba lagi nanti.")
+                os.remove(video_path)
+                return
             video_file = client.files.get(name=video_file.name)
             
         if video_file.state.name == 'FAILED':
@@ -728,8 +749,8 @@ def main():
     elif args.action == 'recipe': generate_recipe(args.ingredients)
     elif args.action == 'get_inventory': get_inventory()
     elif args.action == 'get_expenses': get_expenses()
-    elif args.action == 'set_budget': set_budget(args.amount)
-    elif args.action == 'get_balance': get_balance()
+    elif args.action == 'set_budget': set_budget(args.amount, args.month)
+    elif args.action == 'get_balance': get_balance(args.month)
     elif args.action == 'add_reminder': add_reminder(args.task, args.time)
     elif args.action == 'get_shopping_list': get_shopping_list()
     elif args.action == 'mark_bought': mark_as_bought(args.item)
