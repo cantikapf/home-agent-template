@@ -1,5 +1,7 @@
 # 🏡 Home Agent (WhatsApp Personal Assistant)
 
+*[Read in English](README-en.md)*
+
 Home Agent adalah bot asisten pribadi berbasis AI yang saya bikin untuk ngurusin hal-hal remeh tapi penting di rumah tangga, langsung dari chat WhatsApp.
 
 Capek ngecek kulkas kosong? Males ngetik ulang resep dari video TikTok? Atau pengen nyatet pengeluaran harian cuma modal foto struk belanja? Nah, bot ini yang bakal ngerjain itu semua.
