@@ -16,6 +16,21 @@ Tired of checking an empty fridge? Too lazy to type out a recipe from a TikTok v
 - ⏰ **Smart Reminders:** Set one-time or recurring reminders right from WhatsApp. Plus, the bot automatically sends weekly finance reports.
 - 🤖 **Mistral AI Engine:** Powered by Mistral (super fast & efficient) for main logic and smart data extraction.
 
+## 📱 TikTok Bulk Importer (Tutorial)
+
+If you have hundreds of favorite recipe videos on TikTok and want to automatically import them to your Home Agent database, you can use the *Bulk Importer* scripts:
+
+1. **Request TikTok Data:** Open the TikTok app > *Settings and privacy* > *Account* > *Download your data*. Make sure to select **JSON** format!
+2. **Scan Recipes:** Place the `user_data_tiktok.json` file into this project folder (or `tiktok_data` folder) and run:
+   ```bash
+   python scripts/scan_tiktok_recipes.py
+   ```
+   This script will filter out videos that are highly likely to be cooking recipes based on their titles (takes ~1 minute).
+3. **Extract & Import:** Once done, run:
+   ```bash
+   python scripts/import_tiktok_recipes.py
+   ```
+   The AI will sequentially "watch" and read all those videos, saving them into your Recipe Book automatically. This script comes with an *Auto-Resume* feature, so it's safe if you get disconnected!
 ## 📊 How Does It Work? (Architecture)
 
 To prevent slow replies and *cold starts*, I built the architecture using a *socket daemon*. This keeps Firebase and the AI models on standby in the server's memory. When a chat comes in, execution is lightning-fast!
