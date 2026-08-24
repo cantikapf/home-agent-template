@@ -4,51 +4,57 @@ description: Mengelola daftar belanja, inventaris dapur/kulkas, dan struk belanj
 ---
 # Instructions
 Gunakan perintah ini untuk memodifikasi daftar belanja atau stok:
-`/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py`
+`{{PYTHON_BIN}} {{FAST_CLI_PATH}}`
 
 ## 🛒 Daftar Belanja
 
 ### Tambah ke Daftar Belanja
 Jika pengguna memberikan tautan/URL (seperti link Shopee, Tokopedia, dll), **jadikan seluruh link tersebut sebagai `--item`**. Sistem akan secara otomatis mengekstrak nama barangnya dari link tersebut!
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action shopping --item "<nama_barang_ATAU_link_ecommerce>" --qty <angka> --unit "<satuan>"
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action shopping --item "<nama_barang_ATAU_link_ecommerce>" --qty <angka> --unit "<satuan>" --category "<kategori>"
 # Contoh:
-# /home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action shopping --item "https://shopee.co.id/xxx" --qty 1
+# {{PYTHON_BIN}} {{FAST_CLI_PATH}} --action shopping --item "https://shopee.co.id/xxx" --qty 1 --category "Lain-lain"
 ```
 
 ### Lihat Daftar Belanja
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action get_shopping_list
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action get_shopping_list
 ```
 
 ### Hapus dari Daftar Belanja
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action remove_shopping --item "<nama_barang>"
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action remove_shopping --item "<nama_barang>"
 ```
 
 ### Bersihkan Semua yang Sudah Dibeli
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action clear_bought
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action clear_bought
 ```
 
-### ⭐ SUDAH BELI COMBO (SANGAT PENTING)
-Saat pengguna bilang "sudah beli [barang]" atau mengunggah **Foto Struk Belanja**, Anda WAJIB menggunakan action ini.
+### Tandai Sudah Dibeli (Tanpa Catat Pengeluaran)
+Jika pengguna hanya ingin menandai item sebagai "sudah dibeli" tanpa mencatat harga/stok:
+```bash
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action mark_bought --item "<nama_barang>"
+```
+
+### ⭐ SUDAH BELI COMBO (SANGAT PENTING - WAJIB TERMINAL)
+Saat pengguna bilang "sudah beli [barang]" atau mengunggah **Foto Struk Belanja**, Anda **DILARANG KERAS** hanya menjawab dengan teks! Anda **WAJIB** mengeksekusi perintah CLI `bought` ini di terminal.
 Ini akan otomatis menghapus dari daftar belanja + tambah stok + catat pengeluaran!
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action bought --item "<nama_barang>" --qty <angka> --amount <harga> --category "<kategori>" --unit "<satuan>"
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action bought --item "<nama_barang>" --qty <angka> --amount <harga> --category "<kategori>" --unit "<satuan>"
 ```
 
 ## 📦 Stok/Inventori Kulkas & Dapur
 
 ### Update Stok Barang Manual
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action inventory --item "<nama_barang>" --qty <angka> --inv_action <add|use> --unit "<satuan>"
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action inventory --item "<nama_barang>" --qty <angka> --inv_action <add|use> --unit "<satuan>"
 ```
 (--inv_action add untuk tambah, use untuk kurangi)
 
 ### Lihat Semua Stok
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action get_inventory
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action get_inventory
 ```
 
 ## 📸 Foto Struk Belanja (Vision)
@@ -94,7 +100,7 @@ Ada yang perlu dikoreksi? Kalau sudah benar, bilang "oke" atau "lanjut" ya!
 **Langkah 4: Eksekusi Setelah Konfirmasi**
 Setelah pengguna mengonfirmasi (bilang "oke", "lanjut", "benar", "yes", dll), jalankan perintah `bought` untuk SETIAP item:
 ```bash
-/home/ubuntu/home-agent/venv/bin/python /home/ubuntu/home-agent/fast_cli.py --action bought --item "<nama_barang>" --qty <angka> --amount <harga> --category "<kategori>" --unit "<satuan>"
+{{PYTHON_BIN}} {{FAST_CLI_PATH}} --action bought --item "<nama_barang>" --qty <angka> --amount <harga> --category "<kategori>" --unit "<satuan>"
 ```
 
 ⚠️ PENTING: Jalankan satu perintah `bought` per item, JANGAN digabung!

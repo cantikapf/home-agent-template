@@ -4,7 +4,7 @@ import json
 
 def main():
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    s.settimeout(45.0)  # Allow up to 45s for TikTok AI video extraction
+    s.settimeout(130.0)  # Allow up to 130s for TikTok AI video extraction
     try:
         s.connect("/tmp/home_agent.sock")
     except FileNotFoundError:

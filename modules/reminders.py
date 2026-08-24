@@ -7,7 +7,7 @@ import dateutil.parser
 import uuid
 from .db import db, get_now_utc, sanitize_id
 
-def add_reminder(task, time_str):
+def add_reminder(task, time_str, recurring=""):
     try:
         # User inputs local time string. Parse and convert to UTC.
         dt_local = dateutil.parser.parse(time_str)
@@ -16,14 +16,19 @@ def add_reminder(task, time_str):
         dt_utc = dt_local.astimezone(timezone.utc)
         
         doc_ref = db.collection('reminders').document()
-        doc_ref.set({
+        data = {
             'task': task,
             'time_str': dt_local.strftime('%Y-%m-%d %H:%M'),
             'timestamp': dt_utc,
             'status': 'pending',
             'created_at': firestore.SERVER_TIMESTAMP
-        })
-        print(f"Pengingat berhasil disimpan: '{task}' pada waktu {dt_local.strftime('%d-%m-%Y %H:%M')}.")
+        }
+        if recurring:
+            data['recurring'] = recurring
+            
+        doc_ref.set(data)
+        rec_str = f" (Berulang: {recurring})" if recurring else ""
+        print(f"Pengingat berhasil disimpan: '{task}' pada waktu {dt_local.strftime('%d-%m-%Y %H:%M')}{rec_str}.")
         print("Beri tahu pengguna bahwa Anda akan mengingatkannya nanti secara otomatis.")
     except Exception as e:
         print(f"Format waktu gagal dipahami. Gagal menyimpan pengingat. Minta pengguna menyebutkan waktu spesifik YYYY-MM-DD HH:MM. Error: {e}")
