@@ -1,63 +1,75 @@
 # 🏡 Home Agent (WhatsApp Personal Assistant)
 
-*[Read in English](README-en.md)*
+Selamat datang di repositori **Home Agent**, sebuah asisten rumah tangga pintar berbasis AI yang dapat diintegrasikan dengan WhatsApp Anda (via [Hermes Agent](https://github.com/cantikapf/hermes-agent)).
 
-Home Agent adalah bot asisten pribadi berbasis AI yang saya bikin untuk ngurusin hal-hal remeh tapi penting di rumah tangga, langsung dari chat WhatsApp.
-
-Capek ngecek kulkas kosong? Males ngetik ulang resep dari video TikTok? Atau pengen nyatet pengeluaran harian cuma modal foto struk belanja? Nah, bot ini yang bakal ngerjain itu semua.
+Proyek ini dibangun untuk mengotomatisasi berbagai urusan rumah tangga harian, mulai dari memantau isi kulkas, mencatat keuangan, hingga mengekstrak resep masakan langsung dari video TikTok menggunakan *Multimodal AI*.
 
 ## ✨ Fitur Utama
 
-- 🛒 **Daftar Belanja Pintar:** Gak cuma nyatet belanjaan biasa, kalau kamu kirim link dari Shopee atau Tokopedia, bot bisa langsung nge-ekstrak nama barangnya otomatis.
-- 🧾 **Tinggal Foto Struk (Vision AI):** Malas nyatet pengeluaran satu-satu? Foto aja struk belanjanya. AI bakal baca harganya, nge-total, dan masukin ke kategori pengeluaran yang pas.
-- ❄️ **Manajemen Kulkas & Dapur:** Cek sisa stok bahan makanan.
-- 🍳 **Buku Resep & Video Extractor:** Punya video resep dari TikTok atau YouTube? Kirim aja link-nya. Multimodal AI bakal nonton videonya dan nyatet bahan serta cara masaknya ke database resep kamu.
-- 💰 **Manajemen Keuangan Terpadu:** Pantau pengeluaran harian/mingguan, catat tagihan bulanan (Bills), hingga pencatatan aset investasi/tabungan liquid (Assets). Tiap nyatat pengeluaran, bot ngasih tahu sisa budget bulanan.
-- ⏰ **Reminder & Weekly Report:** Pasang alarm satu kali atau berulang (harian/mingguan). Plus, tiap minggu bot otomatis kirim laporan keuangan.
-- 🤖 **Agnostic AI Engine:** Bisa pakai Mistral (super cepat & irit) untuk logika utama, dan Gemini untuk Vision/Multimodal.
+- 🛒 **Manajemen Daftar Belanja:** Menambah dan mencatat barang-barang yang perlu dibeli secara otomatis dari kulkas atau manual.
+- 📦 **Inventaris Kulkas & Dapur:** Memantau stok bahan makanan secara *real-time*. AI akan memberikan peringatan jika bahan habis.
+- 🍳 **Buku Resep Pintar:** Menyimpan resep masakan. AI akan mencocokkan resep dengan bahan-bahan yang saat ini tersedia di kulkas Anda.
+- 🎥 **Ekstraksi Resep Video (TikTok/YouTube):** Kemampuan super untuk membaca link video TikTok/YouTube menggunakan *Multimodal AI* (Gemini), mengekstrak bahan dan instruksi, lalu menyimpannya ke Buku Resep.
+- 💸 **Pencatatan Keuangan Terpadu:** Memantau pengeluaran harian/mingguan, manajemen tagihan berulang bulanan (Bills), hingga pencatatan saldo tabungan & investasi (Assets).
+- ⏰ **Pengingat / Alarm Cerdas:** Memasang alarm dan *reminders* (satu kali atau berulang) langsung dari obrolan WhatsApp, bot akan otomatis mengingatkan Anda di jam yang ditentukan.
+- 🤖 **Modular & Agnostik AI:** Menggunakan Hermes sebagai *gateway*, Home Agent kini dapat ditenagai oleh model AI ringan berkecepatan tinggi maupun model *reasoning* canggih (Mistral, Llama 3.1, Gemini).
 
-## 📊 Gimana Cara Kerjanya? (Arsitektur)
+## 🛠️ Prasyarat (Prerequisites)
 
-Biar gak lemot dan *cold start*, saya bikin arsitekturnya pakai *daemon socket*. Jadi, Firebase dan AI model-nya tetap *standby* di memori server. Kalau ada chat masuk, eksekusinya kilat!
+Untuk menjalankan proyek ini di mesin Anda, Anda membutuhkan:
 
-```mermaid
-sequenceDiagram
-    participant User as 📱 WhatsApp (User)
-    participant Hermes as 🤖 Hermes Agent (Node.js)
-    participant CLI as ⌨️ Fast CLI (Python)
-    participant Daemon as ⚙️ Fast Daemon (Socket)
-    participant Gemini as 🧠 Gemini AI (Multimodal)
-    participant Firebase as 🗄️ Firestore (Database)
+1. **Python 3.10+** terpasang di sistem.
+2. **Hermes Agent** (atau framework WhatsApp bot serupa yang mendukung pemanggilan *command-line tools*).
+3. **Google Gemini API Key** (Gratis di Google AI Studio).
+4. **Firebase Firestore Database** (Gratis di Google Cloud/Firebase).
+   - Buat proyek Firebase baru.
+   - Buat Firestore Database.
+   - Generate *Service Account Key* (Settings > Service Accounts > Generate new private key).
 
-    User->>Hermes: Chat / Foto / Video
-    Hermes->>Gemini: Pahami maksud chat & ekstrak instruksi
-    Gemini-->>Hermes: Tentukan Tool (Misal: "Catat Belanja Susu")
-    Hermes->>CLI: Eksekusi Tool (fast_cli.py --action shopping --item Susu)
-    CLI->>Daemon: Kirim via Unix Socket (Proses Instan)
-    Daemon->>Firebase: Simpan "Susu" ke database
-    Firebase-->>Daemon: Sukses
-    Daemon-->>CLI: Return hasil
-    CLI-->>Hermes: Output eksekusi
-    Hermes->>User: Balas WA ("Susu berhasil dicatat! ✅")
-```
+## 🚀 Instalasi & Setup
 
-## 🛠️ Tech Stack
+1. **Clone Repositori:**
+   ```bash
+   git clone https://github.com/yourusername/home-agent-public.git
+   cd home-agent-public
+   ```
 
-- **AI Engine:** Google Gemini (Gemini 2.5 Flash & Flash-Lite) di-handle oleh framework **Hermes Agent**.
-- **WhatsApp Bridge:** Node.js (via Baileys).
-- **Database:** Firebase Firestore (GCP).
-- **Hosting:** Oracle Cloud VPS (Ubuntu).
-- **CI/CD:** GitHub Actions.
+2. **Jalankan Setup Script:**
+   Script ini akan menginstall dependensi dan mengganti path konfigurasi sesuai dengan direktori Anda.
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
 
-## 🚀 CI/CD Pipeline (Auto-Deploy)
+3. **Konfigurasi Kredensial:**
+   - Ubah nama file Service Account Key dari Firebase menjadi `firebase-credentials.json` dan letakkan di dalam folder proyek ini.
+   - Buka file `.env` dan masukkan `GEMINI_API_KEY` Anda.
 
-Setiap ada perubahan kode yang di-push ke branch `main`, GitHub Actions bakal otomatis nge-trigger *runner* masuk ke VPS (via SSH), narik kode terbaru, dan nge-restart service bot di server. Jadi gak perlu repot *remote* server tiap kali ada *update* fitur.
+4. **Integrasi dengan Hermes Agent:**
+   - Folder `skills/` akan ter-generate (berisi instruksi Markdown untuk AI).
+   - Pindahkan/copy isi folder `skills/` ke direktori skills milik bot Hermes Anda (misal: `~/.hermes/skills/home-agent/`).
 
-## 🔒 Security & Setup Kredensial
+5. **Jalankan Daemon:**
+   Proyek ini menggunakan *socket daemon* yang sangat cepat (`fast_daemon.py`) agar model Python dan library Firebase tidak perlu dimuat ulang pada setiap pesan WhatsApp.
+   ```bash
+   # Aktifkan virtual environment
+   source venv/bin/activate
+   # Jalankan daemon
+   python fast_daemon.py
+   ```
+   *(Sangat disarankan menjalankan daemon ini via `systemd` atau `pm2` agar berjalan di background).*
 
-Tenang, data rahasia kayak `.env`, file kredensial `.json` dari Firebase, dan *private key* SSH (`.key`) udah aman di-block sama `.gitignore`.
+## 🏗️ Arsitektur
 
-Kalau kamu mau jalanin atau me- *fork* bot ini di komputer sendiri:
-1. Copy `.env.example` jadi `.env` lalu masukin API Key Gemini kamu.
-2. Letakkan file *service account* Firebase kamu (`firebase-credentials.json`) di folder *root*.
-3. Setup dan jalankan *daemon* Python-nya!
+- `home_agent.py`: Berisi seluruh logika bisnis (Firestore CRUD, Gemini Vision, dll).
+- `fast_daemon.py`: Unix socket server yang me-*load* `home_agent.py` ke memory, sehingga pemrosesan jauh lebih cepat (menghindari overhead *cold start*).
+- `fast_cli.py`: Klien CLI ringan yang dipanggil oleh Hermes Agent, meneruskan argumen terminal ke daemon via socket.
+- `reminder_worker.py`: Worker background yang mengecek *reminders* (alarm) dari Firestore setiap 60 detik.
+- `skills_template/`: Template instruksi untuk AI (Prompt RAG). Diubah menjadi folder `skills/` saat menjalankan `setup.sh`.
+
+## 🤝 Berkontribusi (Contributing)
+
+Silakan buat *Issue* atau kirimkan *Pull Request* jika Anda menemukan *bug* atau ingin menambahkan fitur baru! Kami sangat terbuka untuk kontribusi komunitas.
+
+## 📄 Lisensi
+[MIT License](LICENSE)
