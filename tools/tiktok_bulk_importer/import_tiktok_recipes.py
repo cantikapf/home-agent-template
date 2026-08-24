@@ -48,22 +48,32 @@ def main():
         print(f"\n[{i+1}/{len(recipes)}] Memproses: {title}")
         print(f"URL: {url}")
         
+        # Rewrite tiktokv.com to standard tiktok.com
+        if 'tiktokv.com' in url:
+            video_id = url.rstrip('/').split('/')[-1]
+            url = f"https://www.tiktok.com/video/{video_id}"
+
         try:
+            # PENTING: Gunakan PYTHONIOENCODING=utf-8 agar print emoji tidak crash di Windows
+            env = os.environ.copy()
+            env['PYTHONIOENCODING'] = 'utf-8'
+            
             result = subprocess.run(
                 [args.python_cmd, home_agent_script, '--action', 'extract_video', '--item', url],
                 capture_output=True,
                 text=True,
                 encoding='utf-8',
+                env=env,
                 timeout=90
             )
             
             output = result.stdout
             err = result.stderr
             
-            if result.returncode != 0:
-                print(f"[ERR] Gagal menjalankan script. Error: {err.strip()}")
+            if result.returncode != 0 or "SYSTEM_ERROR" in output:
+                print(f"[ERR] Gagal menjalankan script. Error: {output.strip()} {err.strip()}")
                 fail_count += 1
-            elif "Bukan video resep" in output or "tidak ditemukan" in output:
+            elif "Bukan video resep" in output or "tidak ditemukan" in output or "❌" in output:
                 print("[X] Gagal/Bukan Resep. Dilewati.")
                 fail_count += 1
             else:
