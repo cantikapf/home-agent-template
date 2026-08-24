@@ -26,6 +26,6 @@ done
 
 echo "Setup complete! Now you need to:"
 echo "1. Put your Firebase credentials in 'firebase-credentials.json'"
-echo "2. Edit '.env' with your Gemini API key"
+echo "2. Edit '.env' with your Mistral API key"
 echo "3. Copy the 'skills/' folder to your Hermes Agent skills directory (e.g., ~/.hermes/skills/home-agent/)"
 echo "4. Run 'python fast_daemon.py' in the background to start the socket server"
