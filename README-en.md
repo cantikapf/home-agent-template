@@ -10,11 +10,11 @@ Tired of checking an empty fridge? Too lazy to type out a recipe from a TikTok v
 
 - 🛒 **Smart Shopping List:** It doesn't just take notes. Send a link from Shopee or Tokopedia, and the bot will automatically extract the product name for you.
 - 🧾 **Snap a Receipt (Vision AI):** Too lazy to log expenses one by one? Just snap a photo of your grocery receipt. The AI will read the prices, calculate the total, and categorize the expense automatically.
-- ❄️ **Fridge & Pantry Management:** Keep track of your food stock. When supplies run low, the bot will remind you and automatically add those items to your shopping list.
-- 🍳 **Smart Recipe Book & TikTok Extractor:** Got a recipe video from TikTok/YouTube? Just send the link (or the video). The Multimodal AI will watch it and save the ingredients and cooking steps straight into your recipe database.
-- 💰 **Monthly Budgeting:** Keep an eye on your wallet. Every time you log an expense, the bot tells you your remaining monthly budget balance.
-- ⏰ **Reminders & Weekly Reports:** Set reminders for anything. Plus, every Sunday at 7 PM, the bot sends an automated weekly report (expenses, remaining budget, and low stock alerts).
-- 📝 **TL;DR:** Ask the bot to summarize long articles or chats to save you time.
+- ❄️ **Fridge & Pantry Management:** Keep track of your food stock in real-time.
+- 🍳 **Smart Recipe Book & Video Extractor:** Got a recipe video from TikTok or YouTube? Just send the link. The Multimodal AI will watch it and save the ingredients and cooking steps straight into your recipe database.
+- 💰 **Comprehensive Finance Management:** Track daily/weekly expenses, log recurring monthly bills (Bills), and track your savings/liquid investments (Assets). Every time you log an expense, the bot tells you your remaining budget.
+- ⏰ **Smart Reminders:** Set one-time or recurring reminders right from WhatsApp. Plus, the bot automatically sends weekly finance reports.
+- 🤖 **Agnostic AI Engine:** Powered by Hermes Gateway, allowing it to use Mistral (super fast & efficient) for main logic and Gemini for Vision/Multimodal tasks.
 
 ## 📊 How Does It Work? (Architecture)
 

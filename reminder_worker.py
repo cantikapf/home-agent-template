@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import subprocess
 import firebase_admin
 from firebase_admin import credentials
@@ -47,14 +48,55 @@ def check_reminders():
         
         # Kirim pesan via Hermes
         msg = f"⏰ *PENGINGAT* ⏰\n\nHalo! Waktunya untuk: \n*{task}*"
-        send_whatsapp_message(msg)
-        
-        # Update status menjadi 'done'
-        doc.reference.update({
-            'status': 'done',
-            'notified_at': firestore.SERVER_TIMESTAMP
-        })
-        print(f"Reminded: {task}")
+        try:
+            send_whatsapp_message(msg)
+
+            # Update status menjadi 'done' HANYA jika pesan berhasil terkirim
+            doc.reference.update({
+                'status': 'done',
+                'notified_at': firestore.SERVER_TIMESTAMP
+            })
+            print(f"Reminded: {task}")
+            
+            # Cek jika ini adalah recurring reminder
+            recurring = data.get('recurring', '').lower()
+            if recurring:
+                try:
+                    from datetime import timedelta
+                    from dateutil.relativedelta import relativedelta
+                    
+                    old_timestamp = data.get('timestamp')
+                    # Parse local datetime from time_str
+                    from dateutil.parser import parse as date_parse
+                    dt_local = date_parse(data.get('time_str'))
+                    
+                    if 'daily' in recurring or 'hari' in recurring:
+                        next_time = dt_local + timedelta(days=1)
+                    elif 'weekly' in recurring or 'minggu' in recurring:
+                        next_time = dt_local + timedelta(days=7)
+                    elif 'monthly' in recurring or 'bulan' in recurring:
+                        next_time = dt_local + relativedelta(months=1)
+                    else:
+                        print(f"⚠️ Recurring type '{recurring}' tidak dipahami, skip perpanjangan.")
+                        continue
+                        
+                    next_utc = next_time.astimezone(timezone.utc)
+                    new_doc = db.collection('reminders').document()
+                    new_doc.set({
+                        'task': task,
+                        'time_str': next_time.strftime('%Y-%m-%d %H:%M'),
+                        'timestamp': next_utc,
+                        'status': 'pending',
+                        'created_at': firestore.SERVER_TIMESTAMP,
+                        'recurring': recurring
+                    })
+                    print(f"♻️ Auto-renewed recurring reminder: {task} untuk {next_time.strftime('%Y-%m-%d %H:%M')}")
+                except Exception as ex:
+                    print(f"Error auto-renewing reminder: {ex}")
+
+        except Exception as e:
+            # Jika gagal kirim, biarkan tetap pending agar dicoba lagi nanti
+            print(f"Gagal mengirim reminder '{task}': {e}. Akan dicoba lagi nanti.")
 
 def send_weekly_report():
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Sending automatic weekly report...")
@@ -77,7 +119,21 @@ def send_weekly_report():
         print(f"Error sending weekly report: {e}")
 
 if __name__ == '__main__':
-    last_weekly_report_date = None
+    # Simpan state ke file agar tahan restart
+    STATE_FILE = os.path.join(BASE_DIR, '.reminder_state.json')
+    
+    def load_state():
+        if os.path.exists(STATE_FILE):
+            with open(STATE_FILE, 'r') as f:
+                return json.load(f)
+        return {}
+    
+    def save_state(state):
+        with open(STATE_FILE, 'w') as f:
+            json.dump(state, f)
+    
+    state = load_state()
+    last_weekly_report_date = state.get('last_weekly_report_date', None)
     
     while True:
         try:
@@ -90,6 +146,7 @@ if __name__ == '__main__':
                 if last_weekly_report_date != current_date:
                     send_weekly_report()
                     last_weekly_report_date = current_date
+                    save_state({'last_weekly_report_date': current_date})
                     
         except Exception as e:
             print(f"Error in main loop: {e}")

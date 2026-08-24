@@ -92,6 +92,22 @@ def add_expense(amount, category, desc):
             elif percent >= 90:
                 print("PERINGATAN BUDGET KERAS: Pembelian ini membuat sisa budget bulan ini hampir habis (Tersisa < 10%). Tolong beri peringatan tegas!")
 
+            # Peringatan 50/30/20 Rule
+            if 'wants' in category.lower() or 'wants' in desc.lower() or 'keinginan' in category.lower():
+                wants_budget = budget * 0.30
+                # Hitung total wants
+                docs_all = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
+                total_wants = 0
+                for d in docs_all:
+                    dc = d.to_dict()
+                    c = dc.get('category', '').lower()
+                    ds = dc.get('description', '').lower()
+                    if 'wants' in c or 'wants' in ds or 'keinginan' in c:
+                        total_wants += dc.get('amount', 0)
+                
+                if total_wants > wants_budget:
+                    print(f"\n⚠️ PERINGATAN 50/30/20: Total pengeluaran 'Wants' (Keinginan) bulan ini (Rp {total_wants:,.0f}) sudah melebihi 30% dari total budget bulanan (Rp {wants_budget:,.0f}). Tegur pengguna untuk mengerem belanja hura-hura!")
+
 
 def get_expenses():
     docs = db.collection('expenses').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(10).stream()
@@ -109,6 +125,35 @@ def get_expenses():
         result += f"- [ID: {doc.id}] {date_str}{data.get('category')}: Rp {amount:,.0f} ({data.get('description')})\n"
     print(result if total > 0 else "Belum ada catatan pengeluaran.")
 
+
+
+def update_expense(old_name, amount, category="", desc=""):
+    # Cari expense berdasarkan nama deskripsi (fuzzy/terbaru)
+    docs = db.collection('expenses').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(50).stream()
+    
+    target_doc = None
+    for doc in docs:
+        data = doc.to_dict()
+        if old_name.lower() in data.get('description', '').lower() or old_name.lower() in data.get('category', '').lower():
+            target_doc = doc
+            break
+            
+    if not target_doc:
+        print(f"❌ Tidak menemukan pengeluaran dengan kata kunci '{old_name}' pada 50 transaksi terakhir.")
+        return
+        
+    doc_ref = db.collection('expenses').document(target_doc.id)
+    update_data = {}
+    if amount > 0: update_data['amount'] = float(amount)
+    if category: update_data['category'] = category
+    if desc: update_data['description'] = desc
+    
+    if not update_data:
+        print("⚠️ Tidak ada data yang diubah.")
+        return
+        
+    doc_ref.update(update_data)
+    print(f"✅ Pengeluaran berhasil diupdate: {target_doc.to_dict().get('description')} -> {update_data}")
 
 def delete_expense(doc_id):
     if not doc_id or doc_id.lower() == 'last':
@@ -242,3 +287,120 @@ def get_weekly_report():
     if shop_items:
         print(f"\n🛒 Belum dibeli ({len(shop_items)} item): {', '.join(shop_items)}")
 
+    # Tagihan masa depan (Bulan ini / Depan)
+    current_m = now_local.strftime('%Y-%m')
+    bill_docs = db.collection('scheduled_bills').where('due_month', '==', current_m).where('status', '==', 'pending').stream()
+    bill_items = []
+    for d in bill_docs:
+        dic = d.to_dict()
+        bill_items.append(f"{dic.get('item_name')} (Rp {dic.get('amount',0):,.0f})")
+    
+    if bill_items:
+        print(f"\n🔔 TAGIHAN MENDATANG (Bulan {current_m}):")
+        for b in bill_items:
+            print(f"  • {b}")
+
+
+
+def add_asset(account, amount, type_val):
+    if amount < 0:
+        print("Error: Amount aset tidak boleh negatif.")
+        return
+    doc_ref = db.collection('assets').document(sanitize_id(account))
+    doc_ref.set({
+        'account_name': account,
+        'amount': float(amount),
+        'type': type_val,
+        'updated_at': firestore.SERVER_TIMESTAMP
+    })
+    print(f"🏦 Aset berhasil dicatat: {account} (Tipe: {type_val}) sejumlah Rp {amount:,.0f}")
+
+def get_assets():
+    docs = db.collection('assets').stream()
+    total_liquid = 0
+    total_illiquid = 0
+    assets = []
+    
+    for doc in docs:
+        data = doc.to_dict()
+        amt = data.get('amount', 0)
+        t = data.get('type', '').lower()
+        if t in ['liquid', 'balance', 'tunai']:
+            total_liquid += amt
+        else:
+            total_illiquid += amt
+        assets.append(f"  • {data.get('account_name')} ({data.get('type')}): Rp {amt:,.0f}")
+        
+    print("💼 *LAPORAN TOTAL KEKAYAAN/ASET*")
+    print(f"Total Aset Liquid (Cepat Cair): Rp {total_liquid:,.0f}")
+    print(f"Total Aset Investasi/Deposit: Rp {total_illiquid:,.0f}")
+    print(f"💰 GRAND TOTAL: Rp {(total_liquid + total_illiquid):,.0f}\\n")
+    if assets:
+        print("Rincian:")
+        for a in assets:
+            print(a)
+    else:
+        print("Belum ada data aset yang dicatat.")
+
+def add_bill(item, amount, due_month, recurring=""):
+    doc_ref = db.collection('scheduled_bills').document()
+    data = {
+        'item_name': item,
+        'amount': float(amount),
+        'due_month': due_month,
+        'status': 'pending',
+        'timestamp': firestore.SERVER_TIMESTAMP
+    }
+    if recurring:
+        data['recurring'] = recurring
+        
+    doc_ref.set(data)
+    rec_str = f" (Berulang: {recurring})" if recurring else ""
+    print(f"📅 Rencana tagihan '{item}' sebesar Rp {amount:,.0f} untuk bulan {due_month}{rec_str} berhasil dicatat!")
+
+def get_bills(month_str=""):
+    month = month_str if month_str else get_current_month_str()
+    docs = db.collection('scheduled_bills').where('due_month', '==', month).where('status', '==', 'pending').stream()
+    
+    bills = []
+    total = 0
+    for doc in docs:
+        data = doc.to_dict()
+        amt = data.get('amount', 0)
+        total += amt
+        bills.append(f"  • [ID: {doc.id}] {data.get('item_name')}: Rp {amt:,.0f}")
+        
+    if bills:
+        print(f"🔔 *TAGIHAN MENDATANG UNTUK BULAN {month}*")
+        for b in bills:
+            print(b)
+        print(f"Total Estimasi Tagihan: Rp {total:,.0f}")
+    else:
+        print(f"✅ Tidak ada tagihan pending untuk bulan {month}.")
+
+def get_expense_trend(category):
+    if not category:
+        print("Silakan tentukan kategori untuk melihat tren.")
+        return
+    
+    now_utc = get_now_utc()
+    # 3 bulan terakhir
+    from datetime import timedelta
+    three_months_ago = now_utc - timedelta(days=90)
+    
+    docs = db.collection('expenses').where('category', '==', category).where('timestamp', '>=', three_months_ago).stream()
+    
+    total = 0
+    count = 0
+    for doc in docs:
+        total += doc.to_dict().get('amount', 0)
+        count += 1
+        
+    if count == 0:
+        print(f"Tidak ada data pengeluaran untuk kategori '{category}' dalam 3 bulan terakhir.")
+        return
+        
+    avg = total / 3.0  # simple monthly average
+    print(f"📈 *TREN PENGELUARAN '{category.upper()}' (3 Bulan Terakhir)*")
+    print(f"Total dihabiskan: Rp {total:,.0f} (dalam {count} transaksi)")
+    print(f"Rata-rata per bulan: Rp {avg:,.0f}")

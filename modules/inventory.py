@@ -7,6 +7,36 @@ import dateutil.parser
 import uuid
 from .db import db, get_now_utc, sanitize_id
 
+
+UNIT_CONVERSIONS = {
+    'kg': {'base': 'gr', 'multiplier': 1000},
+    'gr': {'base': 'gr', 'multiplier': 1},
+    'gram': {'base': 'gr', 'multiplier': 1},
+    'liter': {'base': 'ml', 'multiplier': 1000},
+    'l': {'base': 'ml', 'multiplier': 1000},
+    'ml': {'base': 'ml', 'multiplier': 1},
+    'lusin': {'base': 'pcs', 'multiplier': 12},
+    'pcs': {'base': 'pcs', 'multiplier': 1}
+}
+
+def convert_unit(qty, from_unit, to_unit):
+    if not from_unit or not to_unit:
+        return qty
+    from_unit = from_unit.lower()
+    to_unit = to_unit.lower()
+    if from_unit == to_unit:
+        return qty
+    
+    if from_unit in UNIT_CONVERSIONS and to_unit in UNIT_CONVERSIONS:
+        from_info = UNIT_CONVERSIONS[from_unit]
+        to_info = UNIT_CONVERSIONS[to_unit]
+        if from_info['base'] == to_info['base']:
+            # Convert to base first, then to target
+            base_qty = qty * from_info['multiplier']
+            return base_qty / to_info['multiplier']
+            
+    return qty  # Return as-is if no conversion possible
+
 def update_inventory(item, qty, action, unit="", category=""):
     if qty < 0:
         print("Error: Kuantitas tidak boleh negatif.")
@@ -17,11 +47,18 @@ def update_inventory(item, qty, action, unit="", category=""):
         return
         
     doc_ref = db.collection('inventory').document(sanitize_id(item))
+    doc = doc_ref.get()
+    
+    current_qty = doc.to_dict().get('quantity', 0) if doc.exists else 0
+    current_unit = doc.to_dict().get('unit', '') if doc.exists else unit
+    
+    # Konversi satuan jika beda
+    if doc.exists and unit and unit.lower() != current_unit.lower():
+        qty = convert_unit(qty, unit, current_unit)
+        unit = current_unit # Pakai satuan yang sudah ada di database
     
     # Cek stok saat ini jika action == 'use' untuk mencegah stok negatif
     if action == 'use':
-        doc = doc_ref.get()
-        current_qty = doc.to_dict().get('quantity', 0) if doc.exists else 0
         if current_qty <= 0:
             print(f"⚠️ Stok {item} sudah habis (0). Tidak ada yang bisa dikurangi.")
             return
@@ -42,24 +79,11 @@ def update_inventory(item, qty, action, unit="", category=""):
     
     unit_str = f" {final_unit}" if final_unit else ""
     print(f"Stok {item} berhasil diperbarui. Stok saat ini: {new_qty}{unit_str}")
-    if new_qty <= 2:
-        shop_ref = db.collection('shopping_list').document(sanitize_id(item))
-        if not shop_ref.get().exists:
-            data_auto = {'item': item, 'quantity': 1, 'unit': final_unit, 'status': 'pending'}
-            if category: data_auto['category'] = category
-            shop_ref.set(data_auto)
-            print(f"🤖 (Auto-System): {item} otomatis ditambahkan ke daftar belanja karena stok menipis (≤2).")
-    
-    if new_qty <= 0:
-        print(f"PENGUMUMAN: Stok {item} sudah habis! Beritahu pengguna bahwa item telah ditambahkan ke daftar belanja.")
-    elif new_qty <= 2:
-        print(f"⚠️ PERHATIAN: Stok {item} tinggal sedikit ({new_qty}{unit_str}).")
 
 
 def get_inventory():
     docs = db.collection('inventory').stream()
     items = []
-    low_stock = []
     for doc in docs:
         data = doc.to_dict()
         item_name = data.get('item', '')
@@ -67,17 +91,37 @@ def get_inventory():
         unit = data.get('unit', '')
         unit_str = f" {unit}" if unit else ""
         items.append(f"- {item_name}: {qty}{unit_str}")
-        if qty <= 2 and qty > 0:
-            low_stock.append(item_name)
-        elif qty <= 0:
-            low_stock.append(f"{item_name} (HABIS!)")
     
     if items:
         print("📦 Daftar Stok Saat Ini:")
         for item in items:
             print(item)
-        if low_stock:
-            print(f"\n⚠️ Stok hampir habis/habis: {', '.join(low_stock)}")
     else:
         print("Stok masih kosong.")
+
+
+
+def update_category(item, new_category):
+    doc_ref = db.collection('inventory').document(sanitize_id(item))
+    doc = doc_ref.get()
+    
+    if doc.exists:
+        doc_ref.update({'category': new_category})
+        print(f"✅ Kategori stok {item} berhasil diubah menjadi '{new_category}'.")
+    else:
+        # Coba update di shopping list
+        shop_ref = db.collection('shopping_list').document(sanitize_id(item))
+        if shop_ref.get().exists:
+            shop_ref.update({'category': new_category})
+            print(f"✅ Kategori daftar belanja {item} berhasil diubah menjadi '{new_category}'.")
+        else:
+            print(f"❌ Barang '{item}' tidak ditemukan di stok kulkas maupun daftar belanja.")
+
+def delete_stock(item):
+    doc_ref = db.collection('inventory').document(sanitize_id(item))
+    if doc_ref.get().exists:
+        doc_ref.delete()
+        print(f"✅ Item '{item}' berhasil dihapus sepenuhnya dari database stok kulkas.")
+    else:
+        print(f"⚠️ Item '{item}' tidak ditemukan di stok kulkas.")
 

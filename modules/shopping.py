@@ -1,3 +1,4 @@
+import json
 from firebase_admin import firestore
 import re
 import urllib.request
@@ -7,7 +8,7 @@ import dateutil.parser
 import uuid
 from .db import db, get_now_utc, sanitize_id
 
-from .finance import add_expense, get_balance
+from .finance import add_expense, get_balance, get_current_month_str, get_month_bounds
 from .inventory import update_inventory
 def add_shopping_list(item, qty, unit="", category=""):
     if qty < 0:
@@ -72,6 +73,7 @@ def add_shopping_list(item, qty, unit="", category=""):
     doc_ref = db.collection('shopping_list').document(sanitize_id(item))
     data = {'item': item, 'quantity': qty, 'status': 'pending'}
     if unit: data['unit'] = unit
+    if category: data['category'] = category
     if 'http' in str(item) or 'Barang dari Link' in item or '(Shopee)' in item or '(Tokopedia)' in item:
         # Jika berhasil di ekstrak, simpan url aslinya
         data['url'] = original_url if 'original_url' in locals() else item
@@ -83,19 +85,35 @@ def add_shopping_list(item, qty, unit="", category=""):
 
 def get_shopping_list():
     docs = db.collection('shopping_list').where('status', '==', 'pending').stream()
-    items = []
+    
+    # Kelompokkan item berdasarkan kategori
+    categorized_items = {}
+    total_items = 0
+    
     for doc in docs:
         data = doc.to_dict()
         unit = data.get('unit', '')
         unit_str = f" {unit}" if unit else ""
         url_str = f" (Link: {data.get('url')})" if data.get('url') else ""
-        items.append(f"- {data.get('item')}: {data.get('quantity')}{unit_str}{url_str}")
+        item_str = f"- {data.get('item')}: {data.get('quantity')}{unit_str}{url_str}"
+        
+        category = data.get('category', 'Lain-lain')
+        if not category:
+            category = 'Lain-lain'
+            
+        if category not in categorized_items:
+            categorized_items[category] = []
+            
+        categorized_items[category].append(item_str)
+        total_items += 1
     
-    if items:
+    if total_items > 0:
         print("🛒 Daftar Belanja (belum dibeli):")
-        for item in items:
-            print(item)
-        print(f"\nTotal: {len(items)} item")
+        for category, items in categorized_items.items():
+            print(f"\n📂 **{category}**")
+            for item in items:
+                print(item)
+        print(f"\nTotal: {total_items} item")
     else:
         print("Daftar belanja kosong! Tidak ada barang yang perlu dibeli.")
 
@@ -151,7 +169,7 @@ def bought(item, qty, amount, category, unit=""):
     shop_ref = db.collection('shopping_list').document(sanitize_id(item))
     shop_doc = shop_ref.get()
     if shop_doc.exists:
-        batch.update(shop_ref, {'status': 'bought', 'bought_at': firestore.SERVER_TIMESTAMP})
+        batch.set(shop_ref, {'status': 'bought', 'bought_at': firestore.SERVER_TIMESTAMP}, merge=True)
     
     # 2. Update inventory using Increment
     inv_ref = db.collection('inventory').document(sanitize_id(item))
@@ -190,3 +208,49 @@ def bought(item, qty, amount, category, unit=""):
             elif percent >= 80:
                 print("⚠️ PERINGATAN: Budget bulan ini hampir habis!")
 
+
+
+def batch_bought(json_string):
+    try:
+        items = json.loads(json_string)
+    except Exception as e:
+        print(f"Error parse JSON: {e}")
+        return
+        
+    batch = db.batch()
+    total_amount = 0
+    
+    month = get_current_month_str()
+    
+    for obj in items:
+        item = obj.get('item', '')
+        qty = float(obj.get('qty', 1))
+        amount = float(obj.get('amount', 0))
+        category = obj.get('category', 'Belanja')
+        unit = obj.get('unit', '')
+        
+        if not item: continue
+        
+        # 1. Update shopping list
+        shop_ref = db.collection('shopping_list').document(sanitize_id(item))
+        batch.set(shop_ref, {'status': 'bought', 'bought_at': firestore.SERVER_TIMESTAMP}, merge=True)
+        
+        # 2. Update inventory
+        inv_ref = db.collection('inventory').document(sanitize_id(item))
+        inv_data = {'item': item, 'updated_at': firestore.SERVER_TIMESTAMP, 'quantity': firestore.Increment(qty)}
+        if unit: inv_data['unit'] = unit
+        batch.set(inv_ref, inv_data, merge=True)
+        
+        # 3. Add expense
+        exp_ref = db.collection('expenses').document()
+        batch.set(exp_ref, {
+            'amount': amount,
+            'category': category,
+            'description': f"Beli {qty}{' '+unit if unit else ''} {item}",
+            'timestamp': firestore.SERVER_TIMESTAMP
+        })
+        total_amount += amount
+        print(f"✅ Dicatat: {item} (Rp {amount:,.0f})")
+        
+    batch.commit()
+    print(f"\n🎉 Batch transaksi selesai. Total pengeluaran: Rp {total_amount:,.0f}")

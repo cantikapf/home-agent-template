@@ -11,20 +11,47 @@ import json
 import tempfile
 import subprocess
 import os
+import time
+
 def generate_recipe(ingredients):
     print(f"Tolong buatkan resep masakan rumahan kreatif menggunakan bahan-bahan berikut: {ingredients}")
 
 
 def save_recipe(name, ingredients, steps, source_url=""):
-    doc_ref = db.collection('recipes').document()
-    doc_ref.set({
-        'name': name,
-        'ingredients': ingredients,
-        'steps': steps,
-        'source_url': source_url,
-        'created_at': firestore.SERVER_TIMESTAMP
-    })
-    print(f"✅ Resep '{name}' berhasil disimpan ke database!")
+    # Deduplication check
+    docs = db.collection('recipes').stream()
+    target_doc = None
+    
+    for doc in docs:
+        data = doc.to_dict()
+        if source_url and data.get('source_url') == source_url:
+            target_doc = doc
+            break
+        # Or if the name is very similar (exact match lowercase)
+        if name and name.lower() == data.get('name', '').lower():
+            target_doc = doc
+            break
+            
+    if target_doc:
+        doc_ref = db.collection('recipes').document(target_doc.id)
+        doc_ref.update({
+            'name': name,
+            'ingredients': ingredients,
+            'steps': steps,
+            'source_url': source_url,
+            'updated_at': firestore.SERVER_TIMESTAMP
+        })
+        print(f"✅ Resep '{name}' (sudah ada) berhasil diupdate di database!")
+    else:
+        doc_ref = db.collection('recipes').document()
+        doc_ref.set({
+            'name': name,
+            'ingredients': ingredients,
+            'steps': steps,
+            'source_url': source_url,
+            'created_at': firestore.SERVER_TIMESTAMP
+        })
+        print(f"✅ Resep '{name}' berhasil disimpan ke database!")
 
 
 def extract_video_recipe(url):
@@ -62,7 +89,7 @@ def extract_video_recipe(url):
             video_part = types.Part.from_uri(file_uri=url, mime_type='video/mp4')
             prompt = "Tolong tonton video YouTube ini dan ekstrak resep masakannya secara detail dan akurat. Format output yang wajib: 1. Nama Masakan, 2. Bahan-bahan, 3. Cara Membuat. Jika sama sekali bukan video resep, katakan saja 'Bukan video resep'."
             ai_response = client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-1.5-flash',
                 contents=[video_part, prompt]
             )
             print("\n--- HASIL EKSTRAKSI YOUTUBE (GEMINI AI) ---")
@@ -112,7 +139,7 @@ def extract_video_recipe(url):
         prompt = f"Video TikTok ini berjudul '{title}'. Tolong tonton videonya, baca teks yang muncul di layar, dan dengarkan suaranya. Ekstrak resep masakan dari video ini! Format output yang wajib: 1. Nama Masakan, 2. Bahan-bahan, 3. Cara Membuat. Jika video ini sama sekali bukan tentang resep/masakan, katakan saja 'Bukan video resep'."
         
         ai_response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-1.5-flash',
             contents=[video_file, prompt]
         )
         

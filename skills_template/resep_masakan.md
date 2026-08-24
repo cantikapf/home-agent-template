@@ -34,12 +34,13 @@ Setelah mendapat hasil dari terminal, barulah Anda tunjukkan draf resep tersebut
 {{PYTHON_BIN}} {{FAST_CLI_PATH}} --action save_recipe --name "<nama masakan>" --ingredients "<bahan-bahan>" --steps "<cara membuat>" --url "<url sumber>"
 ```
 
-### Lihat Semua Buku Resep
+### Lihat Semua Buku Resep (Daftar Saja)
 ```bash
 {{PYTHON_BIN}} {{FAST_CLI_PATH}} --action get_recipes
 ```
 
-### Baca Detail Resep
+### Baca Detail Resep (WAJIB TERMINAL)
+**ATURAN KERAS:** Jika pengguna meminta "keluarkan resep X", "bagaimana cara masak X?", Anda **DILARANG KERAS** mengarang/halusinasi resep dari ingatan Anda! Anda **WAJIB** mengeksekusi perintah CLI ini di terminal untuk mendapatkan resep asli dari database.
 ```bash
 {{PYTHON_BIN}} {{FAST_CLI_PATH}} --action read_recipe --name "<nama resep>"
 ```

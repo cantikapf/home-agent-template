@@ -10,11 +10,11 @@ Capek ngecek kulkas kosong? Males ngetik ulang resep dari video TikTok? Atau pen
 
 - 🛒 **Daftar Belanja Pintar:** Gak cuma nyatet belanjaan biasa, kalau kamu kirim link dari Shopee atau Tokopedia, bot bisa langsung nge-ekstrak nama barangnya otomatis.
 - 🧾 **Tinggal Foto Struk (Vision AI):** Malas nyatet pengeluaran satu-satu? Foto aja struk belanjanya. AI bakal baca harganya, nge-total, dan masukin ke kategori pengeluaran yang pas.
-- ❄️ **Manajemen Kulkas & Dapur:** Cek sisa stok bahan makanan. Kalau udah mau habis, bot bakal ngingetin dan otomatis masukin barang itu ke daftar belanjaan.
-- 🍳 **Buku Resep & TikTok Extractor:** Punya video resep dari TikTok/YouTube? Kirim aja link-nya (atau videonya). Multimodal AI bakal nonton videonya dan nyatet bahan serta cara masaknya ke database resep kamu.
-- 💰 **Budgeting Bulanan:** Pantau terus dompet bulanan kamu. Setiap nyatet pengeluaran, bot ngasih tahu sisa saldo budget bulan ini.
-- ⏰ **Reminder & Weekly Report:** Bisa di-set buat ngingetin sesuatu. Plus, tiap hari Minggu jam 7 malam, bot bakal ngirim laporan mingguan (pengeluaran minggu ini, sisa budget, stok kulkas yang menipis).
-- 📝 **TL;DR:** Minta bot buat ngerangkum chat atau artikel panjang biar hemat waktu.
+- ❄️ **Manajemen Kulkas & Dapur:** Cek sisa stok bahan makanan.
+- 🍳 **Buku Resep & Video Extractor:** Punya video resep dari TikTok atau YouTube? Kirim aja link-nya. Multimodal AI bakal nonton videonya dan nyatet bahan serta cara masaknya ke database resep kamu.
+- 💰 **Manajemen Keuangan Terpadu:** Pantau pengeluaran harian/mingguan, catat tagihan bulanan (Bills), hingga pencatatan aset investasi/tabungan liquid (Assets). Tiap nyatat pengeluaran, bot ngasih tahu sisa budget bulanan.
+- ⏰ **Reminder & Weekly Report:** Pasang alarm satu kali atau berulang (harian/mingguan). Plus, tiap minggu bot otomatis kirim laporan keuangan.
+- 🤖 **Agnostic AI Engine:** Bisa pakai Mistral (super cepat & irit) untuk logika utama, dan Gemini untuk Vision/Multimodal.
 
 ## 📊 Gimana Cara Kerjanya? (Arsitektur)
 
