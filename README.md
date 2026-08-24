@@ -16,6 +16,21 @@ Capek ngecek kulkas kosong? Males ngetik ulang resep dari video TikTok? Atau pen
 - ⏰ **Reminder & Weekly Report:** Pasang alarm satu kali atau berulang (harian/mingguan). Plus, tiap minggu bot otomatis kirim laporan keuangan.
 - 🤖 **Mistral AI Engine:** Ditenagai oleh Mistral (super cepat & irit) untuk logika utama dan ekstraksi data cerdas.
 
+## 📱 TikTok Bulk Importer (Tutorial)
+
+Buat kamu yang punya ratusan video resep favorit di TikTok dan pengen memindahkannya ke database Home Agent secara otomatis, kamu bisa pakai script *Bulk Importer*:
+
+1. **Request Data TikTok:** Buka aplikasi TikTok > *Settings and privacy* > *Account* > *Download your data*. Pilih format **JSON**!
+2. **Scan Resep:** Taruh file `user_data_tiktok.json` di dalam folder proyek ini (`tiktok_data` jika perlu), lalu jalankan:
+   ```bash
+   python scripts/scan_tiktok_recipes.py
+   ```
+   Skrip ini akan menyeleksi mana video yang kemungkinan besar adalah resep masakan berdasarkan judulnya (memakan waktu ~1 menit).
+3. **Ekstrak & Impor:** Setelah beres, jalankan:
+   ```bash
+   python scripts/import_tiktok_recipes.py
+   ```
+   AI bakal "menonton" dan membaca satu per satu ratusan video tersebut, lalu menyimpannya ke Buku Resep kamu secara otomatis. Skrip ini punya fitur *Auto-Resume* jadi aman kalau terputus!
 ## 📊 Gimana Cara Kerjanya? (Arsitektur)
 
 Biar gak lemot dan *cold start*, saya bikin arsitekturnya pakai *daemon socket*. Jadi, Firebase dan AI model-nya tetap *standby* di memori server. Kalau ada chat masuk, eksekusinya kilat!
