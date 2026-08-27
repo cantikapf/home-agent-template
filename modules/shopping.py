@@ -118,10 +118,28 @@ def get_shopping_list():
         print("Daftar belanja kosong! Tidak ada barang yang perlu dibeli.")
 
 
-def mark_as_bought(item):
+def _find_shopping_item_ref(item):
+    # 1. Try original sanitize_id
     doc_ref = db.collection('shopping_list').document(sanitize_id(item))
-    doc = doc_ref.get()
-    if doc.exists:
+    if doc_ref.get().exists:
+        return doc_ref
+        
+    # 2. Try exact match on 'item' field
+    docs = db.collection('shopping_list').where('item', '==', item).limit(1).get()
+    if docs:
+        return docs[0].reference
+        
+    # 3. Try hyphenated id as fallback
+    alt_id = item.replace(' ', '-').replace('/', '-').lower()
+    alt_ref = db.collection('shopping_list').document(alt_id)
+    if alt_ref.get().exists:
+        return alt_ref
+        
+    return None
+
+def mark_as_bought(item):
+    doc_ref = _find_shopping_item_ref(item)
+    if doc_ref:
         doc_ref.update({
             'status': 'bought',
             'bought_at': firestore.SERVER_TIMESTAMP
@@ -132,9 +150,8 @@ def mark_as_bought(item):
 
 
 def remove_shopping_item(item):
-    doc_ref = db.collection('shopping_list').document(sanitize_id(item))
-    doc = doc_ref.get()
-    if doc.exists:
+    doc_ref = _find_shopping_item_ref(item)
+    if doc_ref:
         doc_ref.delete()
         print(f"🗑️ {item} berhasil dihapus dari daftar belanja.")
     else:
@@ -166,9 +183,8 @@ def bought(item, qty, amount, category, unit=""):
     batch = db.batch()
     
     # 1. Update shopping list
-    shop_ref = db.collection('shopping_list').document(sanitize_id(item))
-    shop_doc = shop_ref.get()
-    if shop_doc.exists:
+    shop_ref = _find_shopping_item_ref(item)
+    if shop_ref:
         batch.set(shop_ref, {'status': 'bought', 'bought_at': firestore.SERVER_TIMESTAMP}, merge=True)
     
     # 2. Update inventory using Increment
@@ -232,8 +248,9 @@ def batch_bought(json_string):
         if not item: continue
         
         # 1. Update shopping list
-        shop_ref = db.collection('shopping_list').document(sanitize_id(item))
-        batch.set(shop_ref, {'status': 'bought', 'bought_at': firestore.SERVER_TIMESTAMP}, merge=True)
+        shop_ref = _find_shopping_item_ref(item)
+        if shop_ref:
+            batch.set(shop_ref, {'status': 'bought', 'bought_at': firestore.SERVER_TIMESTAMP}, merge=True)
         
         # 2. Update inventory
         inv_ref = db.collection('inventory').document(sanitize_id(item))

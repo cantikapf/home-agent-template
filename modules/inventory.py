@@ -7,7 +7,23 @@ import dateutil.parser
 import uuid
 from .db import db, get_now_utc, sanitize_id
 
-
+def _find_inventory_item_ref(item):
+    # 1. Try original sanitize_id
+    doc_ref = db.collection('inventory').document(sanitize_id(item))
+    if doc_ref.get().exists:
+        return doc_ref
+        
+    # 2. Try exact match on 'item' field
+    docs = db.collection('inventory').where('item', '==', item).limit(1).get()
+    if docs:
+        return docs[0].reference
+        
+    # 3. Try exact item string as doc id (legacy)
+    alt_ref = db.collection('inventory').document(item)
+    if alt_ref.get().exists:
+        return alt_ref
+        
+    return None
 UNIT_CONVERSIONS = {
     'kg': {'base': 'gr', 'multiplier': 1000},
     'gr': {'base': 'gr', 'multiplier': 1},
@@ -46,7 +62,10 @@ def update_inventory(item, qty, action, unit="", category=""):
         print(f"Error: Action '{action}' tidak valid. Gunakan 'add' atau 'use'.")
         return
         
-    doc_ref = db.collection('inventory').document(sanitize_id(item))
+    doc_ref = _find_inventory_item_ref(item)
+    if not doc_ref:
+        doc_ref = db.collection('inventory').document(sanitize_id(item))
+    
     doc = doc_ref.get()
     
     current_qty = doc.to_dict().get('quantity', 0) if doc.exists else 0
@@ -102,24 +121,25 @@ def get_inventory():
 
 
 def update_category(item, new_category):
-    doc_ref = db.collection('inventory').document(sanitize_id(item))
-    doc = doc_ref.get()
+    doc_ref = _find_inventory_item_ref(item)
+    doc = doc_ref.get() if doc_ref else None
     
-    if doc.exists:
+    if doc and doc.exists:
         doc_ref.update({'category': new_category})
         print(f"✅ Kategori stok {item} berhasil diubah menjadi '{new_category}'.")
     else:
         # Coba update di shopping list
-        shop_ref = db.collection('shopping_list').document(sanitize_id(item))
-        if shop_ref.get().exists:
+        from .shopping import _find_shopping_item_ref
+        shop_ref = _find_shopping_item_ref(item)
+        if shop_ref and shop_ref.get().exists:
             shop_ref.update({'category': new_category})
             print(f"✅ Kategori daftar belanja {item} berhasil diubah menjadi '{new_category}'.")
         else:
             print(f"❌ Barang '{item}' tidak ditemukan di stok kulkas maupun daftar belanja.")
 
 def delete_stock(item):
-    doc_ref = db.collection('inventory').document(sanitize_id(item))
-    if doc_ref.get().exists:
+    doc_ref = _find_inventory_item_ref(item)
+    if doc_ref and doc_ref.get().exists:
         doc_ref.delete()
         print(f"✅ Item '{item}' berhasil dihapus sepenuhnya dari database stok kulkas.")
     else:
