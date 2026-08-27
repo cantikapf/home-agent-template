@@ -65,32 +65,42 @@ graph TD
     
     subgraph AI Routing Strategy
         Hermes -->|Instruksi CLI / Chat| Router(🔄 9router Load Balancer)
-        Hermes -->|Gambar & Struk Belanja| Vision(👁️ Auxiliary Vision)
         
-        Router -->|Prioritas Utama| Vikey(🟢 Vikey AI<br>deepseek-v4-flash)
-        Router -.->|Fallback / Limit| MistralPool(🟠 Mistral Pool<br>mistral-large-latest)
+        Router -->|Prioritas Utama| MistralPool(🟠 Mistral Pool<br>mistral-large-latest)
+        Router -.->|Fallback / Limit| Vikey(🟢 Vikey AI<br>llama-3.1-70b-instruct)
         
         MistralPool -.-> M1(Mistral API Key 1)
         MistralPool -.-> M2(Mistral API Key 2)
         MistralPool -.-> M3(Mistral API Key 3)
         MistralPool -.-> M4(Mistral API Key 4)
         
-        Vision --> Gemini(🔵 Gemini 3.5 Flash)
+        Router -->|Input Gambar/Struk| Gemini(🔵 Gemini 1.5 Flash Vision Adapter)
+    end
+    
+    subgraph Development & CLI Tools
+        Router -.- Groq(Groq API)
+        Router -.- Nvidia(NVIDIA NIM)
+        Router -.- OpenRouter(OpenRouter)
+        Router -.- GitHub(GitHub Models)
     end
     
     classDef primary fill:#d4edda,stroke:#28a745,stroke-width:2px,color:black;
     classDef fallback fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:black;
     classDef vision fill:#cce5ff,stroke:#007bff,stroke-width:2px,color:black;
     classDef router fill:#e2e3e5,stroke:#383d41,stroke-width:2px,color:black;
+    classDef aux fill:#f8f9fa,stroke:#ced4da,stroke-width:2px,color:black;
     
-    class Vikey primary;
-    class MistralPool,M1,M2,M3,M4 fallback;
-    class Vision,Gemini vision;
+    class MistralPool,M1,M2,M3,M4 primary;
+    class Vikey fallback;
+    class Gemini vision;
     class Router router;
+    class Groq,Nvidia,OpenRouter,GitHub aux;
 ```
-1. **DeepSeek (Vikey AI)**: Otak utama (termurah & sangat stabil untuk mengeksekusi instruksi Python).
-2. **Mistral Pool (via 9router)**: Jika saldo Vikey AI habis atau limit, *Smart Model Routing* akan beralih ke 9router yang membagi beban ke 4 API Key Mistral secara otomatis.
-3. **Gemini 3.5 Flash**: Ditugaskan secara independen dan *headless* khusus hanya saat pengguna mengirimkan foto.
+1. **9Router API Gateway**: Seluruh *API Key* tidak lagi disimpan di file `.env` Hermes Agent, melainkan dikelola terpusat oleh 9Router (`http://localhost:20128/v1`).
+2. **Mistral Pool (Prioritas Utama)**: Menggunakan 4 buah API Key dari Mistral yang dipasangkan ke dalam fitur *Combo* 9Router untuk menangani *heavy workload* tanpa terbentur *rate limit* gratisan (menghemat biaya 100%).
+3. **Vikey AI (Fallback)**: Diposisikan di urutan terakhir dalam Combo. Hanya akan memotong saldo (berbayar) apabila ke-4 kunci Mistral mati secara bersamaan. Dilengkapi dengan *Semantic Caching* (Token Saver) untuk menekan *cost* lebih jauh.
+4. **Gemini 1.5 Flash (Vision Adapter)**: Di-setting khusus pada level *Router* (bukan di Hermes). Ketika pengguna mengirim gambar, router akan mendeteksi kebutuhan `image_url` dan secara otomatis mengalihkannya ke kunci Gemini.
+5. **Auxiliary Keys**: Kunci tambahan seperti Groq, NVIDIA, HuggingFace, Cloudflare, dan GitHub diintegrasikan di 9Router untuk dipakai saat eksperimen atau lewat *CLI Tools* IDE tanpa mengganggu stabilitas bot WhatsApp.
 
 ## 🛠️ Tech Stack
 
