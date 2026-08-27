@@ -56,6 +56,42 @@ sequenceDiagram
     Hermes->>User: Balas WA ("Susu berhasil dicatat! ✅")
 ```
 
+### 🧠 Arsitektur Model & AI Routing (Failover System)
+Karena *system prompt* bot ini sangat besar, bot menggunakan strategi multi-model untuk efisiensi biaya dan reliabilitas tinggi (anti *down*):
+
+```mermaid
+graph TD
+    User([📱 WhatsApp User]) -->|Kirim Pesan/Foto| Hermes(🤖 Hermes Agent)
+    
+    subgraph AI Routing Strategy
+        Hermes -->|Instruksi CLI / Chat| Router(🔄 9router Load Balancer)
+        Hermes -->|Gambar & Struk Belanja| Vision(👁️ Auxiliary Vision)
+        
+        Router -->|Prioritas Utama| Vikey(🟢 Vikey AI<br>deepseek-v4-flash)
+        Router -.->|Fallback / Limit| MistralPool(🟠 Mistral Pool<br>mistral-large-latest)
+        
+        MistralPool -.-> M1(Mistral API Key 1)
+        MistralPool -.-> M2(Mistral API Key 2)
+        MistralPool -.-> M3(Mistral API Key 3)
+        MistralPool -.-> M4(Mistral API Key 4)
+        
+        Vision --> Gemini(🔵 Gemini 3.5 Flash)
+    end
+    
+    classDef primary fill:#d4edda,stroke:#28a745,stroke-width:2px,color:black;
+    classDef fallback fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:black;
+    classDef vision fill:#cce5ff,stroke:#007bff,stroke-width:2px,color:black;
+    classDef router fill:#e2e3e5,stroke:#383d41,stroke-width:2px,color:black;
+    
+    class Vikey primary;
+    class MistralPool,M1,M2,M3,M4 fallback;
+    class Vision,Gemini vision;
+    class Router router;
+```
+1. **DeepSeek (Vikey AI)**: Otak utama (termurah & sangat stabil untuk mengeksekusi instruksi Python).
+2. **Mistral Pool (via 9router)**: Jika saldo Vikey AI habis atau limit, *Smart Model Routing* akan beralih ke 9router yang membagi beban ke 4 API Key Mistral secara otomatis.
+3. **Gemini 3.5 Flash**: Ditugaskan secara independen dan *headless* khusus hanya saat pengguna mengirimkan foto.
+
 ## 🛠️ Tech Stack
 
 - **AI Engine:** Mistral API di-handle oleh framework **Hermes Agent**.

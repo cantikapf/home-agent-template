@@ -63,6 +63,29 @@ def get_balance(month_str=""):
             print(f"PERINGATAN BUDGET: Pengeluaran Anda sudah mencapai {percent:.1f}% dari budget! Tolong ingatkan pengguna untuk berhemat.")
 
 
+
+def _auto_adjust_liquid_asset(amount_diff):
+    assets = list(db.collection('assets').stream())
+    target_asset_id = 'kas'
+    for doc in assets:
+        data = doc.to_dict()
+        if data.get('type', '').lower() in ['liquid', 'balance', 'tunai']:
+            target_asset_id = doc.id
+            break
+            
+    doc_ref = db.collection('assets').document(target_asset_id)
+    doc = doc_ref.get()
+    if doc.exists:
+        new_amount = doc.to_dict().get('amount', 0) + float(amount_diff)
+        doc_ref.update({'amount': new_amount, 'updated_at': firestore.SERVER_TIMESTAMP})
+    else:
+        doc_ref.set({
+            'account_name': 'Kas',
+            'amount': float(amount_diff),
+            'type': 'Liquid',
+            'updated_at': firestore.SERVER_TIMESTAMP
+        })
+
 def add_expense(amount, category, desc):
     if amount < 0:
         print("Error: Pengeluaran tidak boleh negatif.")
@@ -75,6 +98,7 @@ def add_expense(amount, category, desc):
         'timestamp': firestore.SERVER_TIMESTAMP
     })
     print(f"Pengeluaran sebesar Rp {amount:,.0f} untuk {category} ({desc}) berhasil dicatat di Firebase!")
+    _auto_adjust_liquid_asset(-amount)
     
     # Check budget
     month = get_current_month_str()
@@ -92,8 +116,9 @@ def add_expense(amount, category, desc):
             elif percent >= 90:
                 print("PERINGATAN BUDGET KERAS: Pembelian ini membuat sisa budget bulan ini hampir habis (Tersisa < 10%). Tolong beri peringatan tegas!")
 
-            # Peringatan 50/30/20 Rule
-            if 'wants' in category.lower() or 'wants' in desc.lower() or 'keinginan' in category.lower():
+            wants_keywords = ['wants', 'keinginan', 'jajan', 'hiburan', 'hobi']
+            is_wants = any(kw in category.lower() for kw in wants_keywords) or any(kw in desc.lower() for kw in wants_keywords)
+            if is_wants:
                 wants_budget = budget * 0.30
                 # Hitung total wants
                 docs_all = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
@@ -102,7 +127,7 @@ def add_expense(amount, category, desc):
                     dc = d.to_dict()
                     c = dc.get('category', '').lower()
                     ds = dc.get('description', '').lower()
-                    if 'wants' in c or 'wants' in ds or 'keinginan' in c:
+                    if any(kw in c for kw in wants_keywords) or any(kw in ds for kw in wants_keywords):
                         total_wants += dc.get('amount', 0)
                 
                 if total_wants > wants_budget:
@@ -152,7 +177,15 @@ def update_expense(old_name, amount, category="", desc=""):
         print("⚠️ Tidak ada data yang diubah.")
         return
         
+    
+    old_amount = target_doc.to_dict().get('amount', 0)
+    if amount > 0:
+        amount_diff = old_amount - amount
+        if amount_diff != 0:
+            _auto_adjust_liquid_asset(amount_diff)
+            
     doc_ref.update(update_data)
+
     print(f"✅ Pengeluaran berhasil diupdate: {target_doc.to_dict().get('description')} -> {update_data}")
 
 def delete_expense(doc_id):
@@ -172,6 +205,7 @@ def delete_expense(doc_id):
         data = doc.to_dict()
 
     db.collection('expenses').document(doc_id).delete()
+    _auto_adjust_liquid_asset(data.get('amount', 0))
     print(f"🗑️ Pengeluaran berhasil dihapus: {data.get('category')} - Rp {data.get('amount', 0):,.0f} ({data.get('description')})")
 
 
@@ -314,6 +348,25 @@ def add_asset(account, amount, type_val):
         'updated_at': firestore.SERVER_TIMESTAMP
     })
     print(f"🏦 Aset berhasil dicatat: {account} (Tipe: {type_val}) sejumlah Rp {amount:,.0f}")
+
+def update_asset_balance(account, amount):
+    doc_ref = db.collection('assets').document(sanitize_id(account))
+    doc = doc_ref.get()
+    if not doc.exists:
+        print(f"❌ Error: Aset '{account}' tidak ditemukan. Silakan tambahkan sebagai aset baru terlebih dahulu.")
+        return
+        
+    current_amount = doc.to_dict().get('amount', 0)
+    new_amount = current_amount + float(amount)
+    
+    doc_ref.update({
+        'amount': new_amount,
+        'updated_at': firestore.SERVER_TIMESTAMP
+    })
+    
+    action_word = "ditambahkan" if amount > 0 else "dikurangi"
+    print(f"💰 Saldo aset {account} berhasil {action_word} sebesar Rp {abs(amount):,.0f}.")
+    print(f"Total saldo {account} sekarang: Rp {new_amount:,.0f}")
 
 def get_assets():
     docs = db.collection('assets').stream()

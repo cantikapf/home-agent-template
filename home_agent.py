@@ -16,8 +16,8 @@ def main():
         'get_shopping_list', 'mark_bought', 'remove_shopping', 'clear_bought', 'bought',
         'get_expense_summary', 'weekly_report', 'save_recipe', 'extract_video',
         'get_recipes', 'read_recipe', 'delete_recipe', 'delete_expense',
-        'add_asset', 'get_assets', 'add_bill', 'get_bills', 'get_expense_trend',
-        'update_expense', 'update_category', 'batch_bought', 'delete_stock'
+        'add_asset', 'update_asset_balance', 'get_assets', 'add_bill', 'get_bills', 'get_expense_trend',
+        'update_expense', 'update_category', 'batch_bought', 'delete_stock', 'api_status'
     ])
     parser.add_argument('--doc_id', type=str, default="")
     parser.add_argument('--month', type=str, default="")
@@ -69,6 +69,7 @@ def main():
         elif args.action == 'get_recipes': get_recipes()
         elif args.action == 'read_recipe': read_recipe(args.name)
         elif args.action == 'add_asset': add_asset(args.account, args.amount, args.type)
+        elif args.action == 'update_asset_balance': update_asset_balance(args.account, args.amount)
         elif args.action == 'get_assets': get_assets()
         elif args.action == 'add_bill': add_bill(args.item, args.amount, args.due_month, args.recurring)
         elif args.action == 'get_bills': get_bills(args.month)
@@ -77,6 +78,10 @@ def main():
         elif args.action == 'update_category': update_category(args.item, args.category)
         elif args.action == 'batch_bought': batch_bought(args.json_data)
         elif args.action == 'delete_stock': delete_stock(args.item)
+        elif args.action == 'api_status':
+            import subprocess
+            result = subprocess.run(['python3', '/home/ubuntu/home-agent/check_api_status.py'], capture_output=True, text=True)
+            print(result.stdout)
         
     except Exception as e:
         print(f"❌ Error saat mengeksekusi {args.action}: {str(e)}")
