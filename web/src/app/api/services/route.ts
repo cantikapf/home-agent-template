@@ -1,0 +1,113 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/api-utils';
+import { execSync } from 'child_process';
+
+const SERVICES = [
+  { name: 'hermes-gateway', isUser: true },
+  { name: 'hermes-dashboard', isUser: true },
+  { name: 'cloudflared-tunnel', isUser: true },
+  { name: '9router', isUser: false }
+];
+
+function getServiceInfo(serviceDef: { name: string; isUser: boolean }) {
+  const { name: service, isUser } = serviceDef;
+  const sysCmd = isUser ? 'systemctl --user' : 'systemctl';
+
+  try {
+    const status = execSync(`${sysCmd} is-active ${service} 2>/dev/null || true`, { encoding: 'utf8', timeout: 10000 }).trim() || 'unknown';
+    const uptimeRaw = execSync(`${sysCmd} show ${service} --property=ActiveEnterTimestamp --value 2>/dev/null || true`, { encoding: 'utf8', timeout: 10000 }).trim();
+
+    // Get memory usage via cgroup or PID RSS
+    let memoryBytes = 0;
+    try {
+      const pidOutput = execSync(`${sysCmd} show ${service} --property=MainPID --value 2>/dev/null`, { encoding: 'utf8', timeout: 10000 }).trim();
+      const pid = parseInt(pidOutput);
+      if (pid > 0) {
+        const rss = execSync(`cat /proc/${pid}/status 2>/dev/null | grep VmRSS`, { encoding: 'utf8', timeout: 10000 }).trim();
+        const match = rss.match(/(\d+)\s*kB/);
+        if (match) memoryBytes = parseInt(match[1]) * 1024;
+      }
+    } catch (e) {
+      console.error(`Could not get memory for ${service}:`, e);
+    }
+
+    // Calculate uptime seconds from ActiveEnterTimestamp
+    let uptimeSeconds = 0;
+    try {
+      const now = Date.now();
+      const startTime = new Date(uptimeRaw).getTime();
+      uptimeSeconds = Math.floor((now - startTime) / 1000);
+    } catch (e) {
+      console.error(`Could not parse uptime for ${service}:`, e);
+    }
+
+    const cpuPercent = execSync(`${sysCmd} show ${service} --property=CPUUsageNSec --value 2>/dev/null || true`, { encoding: 'utf8', timeout: 10000 }).trim();
+
+    return {
+      service,
+      status,
+      uptime: uptimeRaw,
+      uptimeSeconds,
+      memoryBytes,
+      cpuUsageNsec: cpuPercent ? parseInt(cpuPercent) : 0,
+    };
+  } catch (e) {
+    console.error(`Error getting service info for ${service}:`, e);
+    return {
+      service,
+      status: 'unknown',
+      uptime: null,
+      uptimeSeconds: 0,
+      memoryBytes: 0,
+      cpuUsageNsec: 0,
+      error: 'Failed to retrieve service info',
+    };
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
+  try {
+    const services = SERVICES.map(getServiceInfo);
+    return NextResponse.json({ services });
+  } catch (error: any) {
+    console.error('Error fetching services:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth.error) return auth.error;
+
+  try {
+    const { action, service } = await request.json();
+    const serviceDef = SERVICES.find(s => s.name === service);
+
+    if (!serviceDef) {
+      return NextResponse.json({ error: `Invalid service. Must be one of: ${SERVICES.map(s => s.name).join(', ')}` }, { status: 400 });
+    }
+
+    if (!['start', 'stop', 'restart'].includes(action)) {
+      return NextResponse.json({ error: 'Invalid action. Must be: start, stop, restart' }, { status: 400 });
+    }
+
+    const sysCmd = serviceDef.isUser ? 'systemctl --user' : 'sudo systemctl';
+
+    try {
+      execSync(`${sysCmd} ${action} ${service}`, { encoding: 'utf8', timeout: 30000 });
+    } catch (e: any) {
+      console.error(`Failed to ${action} ${service}:`, e);
+      return NextResponse.json({ error: `Failed to ${action} ${service}: ${e.message}` }, { status: 500 });
+    }
+
+    // Return updated status
+    const updatedInfo = getServiceInfo(serviceDef);
+    return NextResponse.json({ success: true, message: `${service} ${action}ed successfully`, service: updatedInfo });
+  } catch (error: any) {
+    console.error('Error in service action:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

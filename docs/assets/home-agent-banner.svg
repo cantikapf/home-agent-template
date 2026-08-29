@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="400" fill="url(#bg)"/>
+  
+  <!-- Subtle Grid -->
+  <g stroke="#334155" stroke-width="0.5" opacity="0.3">
+    <path d="M 0,50 L 1200,50 M 0,100 L 1200,100 M 0,150 L 1200,150 M 0,200 L 1200,200 M 0,250 L 1200,250 M 0,300 L 1200,300 M 0,350 L 1200,350"/>
+    <path d="M 100,0 L 100,400 M 200,0 L 200,400 M 300,0 L 300,400 M 400,0 L 400,400 M 500,0 L 500,400 M 600,0 L 600,400 M 700,0 L 700,400 M 800,0 L 800,400 M 900,0 L 900,400 M 1000,0 L 1000,400 M 1100,0 L 1100,400"/>
+  </g>
+
+  <!-- Glowing background circles -->
+  <circle cx="200" cy="150" r="120" fill="#38bdf8" opacity="0.08" filter="url(#glow)"/>
+  <circle cx="1000" cy="250" r="140" fill="#818cf8" opacity="0.08" filter="url(#glow)"/>
+
+  <!-- Main Title & Badge -->
+  <g transform="translate(80, 130)">
+    <rect x="0" y="-35" width="220" height="28" rx="14" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+    <text x="15" y="-17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8" letter-spacing="1">🏡 AI HOUSEHOLD OS</text>
+    
+    <text x="0" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="800" fill="#f8fafc" letter-spacing="-1">
+      Home Agent
+    </text>
+    <text x="325" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="800" fill="url(#accent)" letter-spacing="-1">
+      Platform
+    </text>
+    
+    <text x="0" y="90" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" fill="#94a3b8" font-weight="400">
+      WhatsApp Personal Assistant &amp; Real-Time Next.js 16 Management Dashboard
+    </text>
+    <text x="0" y="118" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" fill="#64748b" font-weight="400">
+      Zero Cold-Start Daemon • 9Router 3-Tier AI Brain • Receipt Vision OCR • 50/30/20 Cash Flow
+    </text>
+  </g>
+
+  <!-- Feature Pills -->
+  <g transform="translate(80, 290)">
+    <!-- Pill 1: WhatsApp -->
+    <g transform="translate(0, 0)">
+      <rect width="180" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="20" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="600" fill="#22c55e">📱 WhatsApp Bridge</text>
+    </g>
+    <!-- Pill 2: 9Router -->
+    <g transform="translate(195, 0)">
+      <rect width="170" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="20" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="600" fill="#a855f7">🔀 9Router Proxy</text>
+    </g>
+    <!-- Pill 3: Next.js -->
+    <g transform="translate(380, 0)">
+      <rect width="185" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="20" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="600" fill="#38bdf8">🌐 Next.js Dashboard</text>
+    </g>
+    <!-- Pill 4: Zero Cold Start -->
+    <g transform="translate(580, 0)">
+      <rect width="180" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="20" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="600" fill="#f59e0b">⚙️ Fast Socket IPC</text>
+    </g>
+    <!-- Pill 5: Firestore -->
+    <g transform="translate(775, 0)">
+      <rect width="175" height="42" rx="8" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      <text x="20" y="26" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="600" fill="#fbbf24">🔥 GCP Firestore</text>
+    </g>
+  </g>
+</svg>

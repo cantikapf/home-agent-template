@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 # Gunakan absolute path agar aman jika dijalankan via systemd/cron
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CRED_PATH = os.path.join(BASE_DIR, 'firebase-credentials.json')
+CRED_PATH = os.environ.get('FIREBASE_CREDENTIALS_PATH', os.path.join(BASE_DIR, 'firebase-credentials.json'))
 
 cred = credentials.Certificate(CRED_PATH)
 try:

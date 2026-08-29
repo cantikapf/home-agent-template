@@ -25,42 +25,60 @@ def get_month_bounds(month_str):
     return start_date, end_date
 
 
+WANTS_CATEGORIES = [
+    'hiburan', 'hobi', 'entertainment', 'lifestyle', 
+    'pakaian', 'fashion', 'gaya hidup'
+]
+
+WANTS_KEYWORDS = [
+    # Istilah umum
+    'wants', 'keinginan', 'jajan', 'hiburan', 'hobi', 'entertainment', 'lifestyle', 'rekreasi',
+    # Minuman, Kafe & Kedai Kopi
+    'kopi', 'coffee', 'latte', 'cappuccino', 'espresso', 'ngopi', 'cafe', 'kafe',
+    'juice', 'jus', 'boba', 'matcha', 'tea', 'chatime', 'starbucks', 'fore', 'kenangan', 'point coffee',
+    # Makanan Rekreasi, Cemilan & Delivery
+    'snack', 'dessert', 'sushi', 'durian', 'pancake', 'cake', 'roti', 'pastry', 
+    'ice cream', 'eskrim', 'shopeefood', 'gofood', 'grabfood',
+    # Fashion & Pakaian Santai
+    'baju', 'celana', 'sepatu', 'pakaian', 'outfit', 'executive', 'uniqlo', 'zara', 'h&m',
+    # Hiburan, Bioskop & Gaming
+    'game', 'top-up', 'topup', 'diamond', 'diamonds', 'steam', 'playstation', 
+    'bioskop', 'cinema', 'xxi', 'nonton', 'netflix', 'spotify',
+    # Langganan Software / Tech Hobby
+    'vikey', 'token api', 'api ai', 'antigravity', 'chatgpt', 'openai', 'claude', 'midjourney',
+    # Perawatan Diri / Grooming / Lifestyle Care (Opsi A)
+    'treatment', 'salon', 'spa', 'skincare', 'perawatan'
+]
+
+def is_wants_expense(category: str, description: str) -> bool:
+    cat = (category or '').lower()
+    desc = (description or '').lower()
+    if any(wc in cat for wc in WANTS_CATEGORIES):
+        return True
+    return any(kw in cat or kw in desc for kw in WANTS_KEYWORDS)
+
+def get_current_cash_balance():
+    """Mengambil total saldo aset liquid (Cash Tersedia)."""
+    assets = db.collection('assets').where('type', '==', 'Liquid').stream()
+    return sum(doc.to_dict().get('amount', 0) for doc in assets)
+
+
 def set_budget(amount, month_str=""):
-    if amount < 0:
-        print("Error: Budget tidak boleh negatif.")
-        return
-    month = month_str if month_str else get_current_month_str()
-    doc_ref = db.collection('budgets').document(month)
-    doc_ref.set({
-        'amount': float(amount),
-        'month': month,
-        'updated_at': firestore.SERVER_TIMESTAMP
-    })
-    print(f"Budget untuk bulan {month} berhasil diatur menjadi Rp {amount:,.0f}")
+    print("ℹ️ Sistem keuangan saat ini berbasis kas riil (Cash Tersedia) tanpa sistem budgeting.")
+    print(f"Untuk mengatur saldo kas liquid, gunakan: ha --action update_asset_balance --account \"Kas\" --amount {amount}")
 
 
 def get_balance(month_str=""):
     month = month_str if month_str else get_current_month_str()
-    budget_doc = db.collection('budgets').document(month).get()
-    budget = budget_doc.to_dict().get('amount', 0) if budget_doc.exists else 0
-        
     start_date, end_date = get_month_bounds(month)
-    docs = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
+    docs = list(db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream())
     
     total_expense = sum(d.to_dict().get('amount', 0) for d in docs)
-    balance = budget - total_expense
+    cash_available = get_current_cash_balance()
     
-    print(f"Laporan Keuangan Bulan {month}:")
-    print(f"Batas Budget: Rp {budget:,.0f}")
-    print(f"Total Pengeluaran: Rp {total_expense:,.0f}")
-    print(f"Sisa Uang/Budget: Rp {balance:,.0f}")
-    
-    if budget > 0:
-        percent = (total_expense / budget) * 100
-        if percent >= 100:
-            print("PERINGATAN BUDGET: Pengeluaran Anda sudah MELEBIHI budget bulan ini! Tolong nasihati pengguna dengan tegas.")
-        elif percent >= 80:
-            print(f"PERINGATAN BUDGET: Pengeluaran Anda sudah mencapai {percent:.1f}% dari budget! Tolong ingatkan pengguna untuk berhemat.")
+    print(f"Laporan Kas & Keuangan Bulan {month}:")
+    print(f"💵 Saldo Kas / Cash Tersedia: Rp {cash_available:,.0f}")
+    print(f"💸 Total Pengeluaran Bulan Ini: Rp {total_expense:,.0f} ({len(docs)} transaksi)")
 
 
 
@@ -100,38 +118,32 @@ def add_expense(amount, category, desc):
     print(f"Pengeluaran sebesar Rp {amount:,.0f} untuk {category} ({desc}) berhasil dicatat di Firebase!")
     _auto_adjust_liquid_asset(-amount)
     
-    # Check budget
+    # Hitung total pengeluaran dan Wants bulan ini
     month = get_current_month_str()
-    budget_doc = db.collection('budgets').document(month).get()
-    if budget_doc.exists:
-        budget = budget_doc.to_dict().get('amount', 0)
-        start_date, end_date = get_month_bounds(month)
-        docs = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
-        total_expense = sum(d.to_dict().get('amount', 0) for d in docs)
-        
-        if budget > 0:
-            percent = (total_expense / budget) * 100
-            if percent >= 100:
-                print("PERINGATAN BUDGET KERAS: Pembelian ini membuat Anda MELEBIHI budget bulan ini! Marahi pengguna agar berhenti belanja!")
-            elif percent >= 90:
-                print("PERINGATAN BUDGET KERAS: Pembelian ini membuat sisa budget bulan ini hampir habis (Tersisa < 10%). Tolong beri peringatan tegas!")
+    start_date, end_date = get_month_bounds(month)
+    docs_all = list(db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream())
+    total_expense = 0
+    total_wants = 0
+    for d in docs_all:
+        dc = d.to_dict()
+        amt = dc.get('amount', 0)
+        total_expense += amt
+        if is_wants_expense(dc.get('category', ''), dc.get('description', '')):
+            total_wants += amt
+            
+    cash_available = get_current_cash_balance()
+    print(f"💰 Total Pengeluaran Bulan Ini ({month}): Rp {total_expense:,.0f} ({len(docs_all)} transaksi)")
+    print(f"💵 Sisa Cash Tersedia: Rp {cash_available:,.0f}")
 
-            wants_keywords = ['wants', 'keinginan', 'jajan', 'hiburan', 'hobi']
-            is_wants = any(kw in category.lower() for kw in wants_keywords) or any(kw in desc.lower() for kw in wants_keywords)
-            if is_wants:
-                wants_budget = budget * 0.30
-                # Hitung total wants
-                docs_all = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
-                total_wants = 0
-                for d in docs_all:
-                    dc = d.to_dict()
-                    c = dc.get('category', '').lower()
-                    ds = dc.get('description', '').lower()
-                    if any(kw in c for kw in wants_keywords) or any(kw in ds for kw in wants_keywords):
-                        total_wants += dc.get('amount', 0)
-                
-                if total_wants > wants_budget:
-                    print(f"\n⚠️ PERINGATAN 50/30/20: Total pengeluaran 'Wants' (Keinginan) bulan ini (Rp {total_wants:,.0f}) sudah melebihi 30% dari total budget bulanan (Rp {wants_budget:,.0f}). Tegur pengguna untuk mengerem belanja hura-hura!")
+    # Evaluasi Arsitektur Wants (50/30/20 Rule: Ideal Maks 30% dari Total Pengeluaran)
+    is_current_wants = is_wants_expense(category, desc)
+    wants_pct = (total_wants / total_expense * 100) if total_expense > 0 else 0
+    
+    if is_current_wants:
+        if wants_pct > 30:
+            print(f"\n⚠️ PERINGATAN 50/30/20: Total pengeluaran 'Wants' (Keinginan) bulan ini sudah mencapai Rp {total_wants:,.0f} ({wants_pct:.1f}% dari total pengeluaran). Sudah melebihi batas ideal 30%! Tegur pengguna dengan tegas agar mengerem belanja non-esensial/lifestyle!")
+        else:
+            print(f"\n💡 Info Wants (50/30/20): Porsi pengeluaran 'Wants' bulan ini masih aman di angka {wants_pct:.1f}% (Rp {total_wants:,.0f} dari total Rp {total_expense:,.0f}). Ideal maks 30%.")
 
 
 def get_expenses():
@@ -218,18 +230,21 @@ def get_expense_summary(month_str=""):
         print(f"Format bulan salah. Gunakan YYYY-MM. Error: {e}")
         return
     
-    docs = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
+    docs = list(db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream())
     
     categories = {}
     total = 0
-    count = 0
+    total_wants = 0
+    count = len(docs)
     for doc in docs:
         data = doc.to_dict()
         cat = data.get('category', 'Lain-lain')
         amount = data.get('amount', 0)
+        desc = data.get('description', '')
         categories[cat] = categories.get(cat, 0) + amount
         total += amount
-        count += 1
+        if is_wants_expense(cat, desc):
+            total_wants += amount
     
     if not categories:
         print("Belum ada pengeluaran bulan ini.")
@@ -245,15 +260,14 @@ def get_expense_summary(month_str=""):
         bar = "█" * int(percent / 5)
         print(f"  {cat}: Rp {amount:,.0f} ({percent:.1f}%) {bar}")
     
-    budget_doc = db.collection('budgets').document(month).get()
-    if budget_doc.exists:
-        budget = budget_doc.to_dict().get('amount', 0)
-        if budget > 0:
-            balance = budget - total
-            percent_used = (total / budget) * 100
-            print(f"\n💰 Budget: Rp {budget:,.0f}")
-            print(f"💸 Terpakai: Rp {total:,.0f} ({percent_used:.1f}%)")
-            print(f"💵 Sisa: Rp {balance:,.0f}")
+    # Metrik Pengeluaran Wants (Aturan 50/30/20)
+    wants_pct = (total_wants / total * 100) if total > 0 else 0
+    status_wants = "🟢 Sehat (≤ 30%)" if wants_pct <= 30 else "🔴 Over 30% (Perlu direm)"
+    print(f"\n🛍️ Pengeluaran 'Wants' (Keinginan): Rp {total_wants:,.0f} ({wants_pct:.1f}% dari total) — {status_wants}")
+
+    # Saldo Kas Riil Tersedia
+    cash_available = get_current_cash_balance()
+    print(f"💵 Saldo Kas / Cash Tersedia: Rp {cash_available:,.0f}")
 
 
 def get_weekly_report():
@@ -262,15 +276,19 @@ def get_weekly_report():
     week_ago_utc = now_utc - timedelta(days=7)
     
     # Pengeluaran minggu ini
-    docs = db.collection('expenses').where('timestamp', '>=', week_ago_utc).where('timestamp', '<', now_utc).stream()
+    docs = list(db.collection('expenses').where('timestamp', '>=', week_ago_utc).where('timestamp', '<', now_utc).stream())
     categories = {}
     total = 0
+    total_wants = 0
     for doc in docs:
         data = doc.to_dict()
         cat = data.get('category', 'Lain-lain')
         amount = data.get('amount', 0)
+        desc = data.get('description', '')
         categories[cat] = categories.get(cat, 0) + amount
         total += amount
+        if is_wants_expense(cat, desc):
+            total_wants += amount
     
     print("📋 *LAPORAN MINGGUAN RUMAH TANGGA*\n")
     # Tampilkan tanggal dalam lokal WIB untuk laporan
@@ -286,17 +304,17 @@ def get_weekly_report():
     else:
         print("💸 Tidak ada pengeluaran minggu ini.")
     
-    # Budget info
+    # Wants & Saldo Kas Bulanan
     month = now_local.strftime('%Y-%m')
-    budget_doc = db.collection('budgets').document(month).get()
-    if budget_doc.exists:
-        budget = budget_doc.to_dict().get('amount', 0)
-        if budget > 0:
-            start_date, end_date = get_month_bounds(month)
-            month_docs = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
-            month_total = sum(d.to_dict().get('amount', 0) for d in month_docs)
-            balance = budget - month_total
-            print(f"\n💰 Sisa budget bulan ini: Rp {balance:,.0f}")
+    start_date, end_date = get_month_bounds(month)
+    month_docs = list(db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream())
+    month_total = sum(d.to_dict().get('amount', 0) for d in month_docs)
+    month_wants = sum(d.to_dict().get('amount', 0) for d in month_docs if is_wants_expense(d.to_dict().get('category', ''), d.to_dict().get('description', '')))
+    wants_pct = (month_wants / month_total * 100) if month_total > 0 else 0
+    cash_available = get_current_cash_balance()
+    
+    print(f"\n🛍️ Porsi Wants bulan ini: Rp {month_wants:,.0f} ({wants_pct:.1f}% dari total pengeluaran)")
+    print(f"💵 Saldo Kas / Cash Tersedia: Rp {cash_available:,.0f}")
     
     # Stok hampir habis
     inv_docs = db.collection('inventory').stream()

@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Light Mode Utilitarian */
+  --background: 0 0% 96%; /* #F5F5F5 */
+  --foreground: 0 0% 0%; /* Black */
+  --card: 0 0% 100%; /* White */
+  --card-foreground: 0 0% 0%;
+  --primary: 221 83% 53%; /* Blue-600 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 0 0% 0%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 40%;
+  --accent: 221 83% 53%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 80%; /* 20% black */
+  --input: 0 0% 80%;
+  --ring: 221 83% 53%;
+  --radius: 0.125rem; /* 2px */
+}
+
+.dark {
+  /* Dark Mode Utilitarian */
+  --background: 0 0% 7%; /* #121212 */
+  --foreground: 0 0% 100%; /* White */
+  --card: 0 0% 10%; /* #1a1a1a */
+  --card-foreground: 0 0% 100%;
+  --primary: 217 91% 60%; /* Blue-500 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 217 91% 60%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 20%; /* 20% white */
+  --input: 0 0% 20%;
+  --ring: 217 91% 60%;
+  --radius: 0.125rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+.glass-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+}
+
+.log-error { color: #f87171; }
+.log-warn { color: #fbbf24; }
+.log-info { color: #60a5fa; }
+.log-debug { color: #a1a1aa; }
+
+::selection {
+  background: hsl(var(--primary) / 0.3);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--primary));
+}
+
+button, a {
+  transition: none;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
