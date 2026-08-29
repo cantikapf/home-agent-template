@@ -237,7 +237,7 @@ def get_expense_summary(month_str=""):
     
     sorted_cats = sorted(categories.items(), key=lambda x: x[1], reverse=True)
     
-    print(f"📊 Ringkasan Pengeluaran Bulan {month}:")
+    print(f"📊 Ringkasan TOTAL Pengeluaran BULAN INI (Bulan {month}):")
     print(f"Total: Rp {total:,.0f} ({count} transaksi)\n")
     print("Per Kategori:")
     for cat, amount in sorted_cats:
