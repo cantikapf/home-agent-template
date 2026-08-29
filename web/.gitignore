@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Auth & secrets
+auth.json
+.env
+.env.local
+.env.production
+
+# Debug/temp files
+debug-*.cjs
+debug-*.js
+test-*.cjs
+test-*.mjs
+claude-task.md
+opencode-task.md
+screenshot.cjs
+gen-auth.cjs
+
+# Test artifacts
+tests/screenshots/
+test-results/
+playwright-report/
+
+# Logs
+*.log

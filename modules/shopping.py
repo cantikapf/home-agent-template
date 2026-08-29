@@ -8,7 +8,7 @@ import dateutil.parser
 import uuid
 from .db import db, get_now_utc, sanitize_id
 
-from .finance import add_expense, get_balance, get_current_month_str, get_month_bounds
+from .finance import add_expense, get_balance, get_current_month_str, get_month_bounds, _auto_adjust_liquid_asset, get_current_cash_balance, is_wants_expense
 from .inventory import update_inventory
 def add_shopping_list(item, qty, unit="", category=""):
     if qty < 0:
@@ -194,36 +194,40 @@ def bought(item, qty, amount, category, unit=""):
     batch.set(inv_ref, inv_data, merge=True)
     
     # 3. Add expense
+    cat = category if category else 'Belanja'
+    desc = f"Beli {qty}{' '+unit if unit else ''} {item}"
     exp_ref = db.collection('expenses').document()
     batch.set(exp_ref, {
         'amount': float(amount),
-        'category': category if category else 'Belanja',
-        'description': f"Beli {qty}{' '+unit if unit else ''} {item}",
+        'category': cat,
+        'description': desc,
         'timestamp': firestore.SERVER_TIMESTAMP
     })
     
     batch.commit()
+    
+    # 4. Potong saldo kas aset secara otomatis
+    _auto_adjust_liquid_asset(-float(amount))
+    
     print(f"✅ {item} dihapus dari daftar belanja (jika ada).")
     print(f"📦 Stok {item} bertambah sebanyak {qty}{' '+unit if unit else ''}.")
     print(f"💰 Pengeluaran Rp {amount:,.0f} untuk {item} berhasil dicatat.")
     
-    # 4. Check budget
-    month = get_current_month_str()
-    budget_doc = db.collection('budgets').document(month).get()
-    if budget_doc.exists:
-        budget = budget_doc.to_dict().get('amount', 0)
+    # 5. Tampilkan Sisa Saldo Kas & Evaluasi Wants
+    cash_available = get_current_cash_balance()
+    print(f"💵 Sisa Cash Tersedia: Rp {cash_available:,.0f}")
+    
+    if is_wants_expense(cat, desc):
+        month = get_current_month_str()
         start_date, end_date = get_month_bounds(month)
-        docs = db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream()
-        total_expense = sum(d.to_dict().get('amount', 0) for d in docs)
-        if budget > 0:
-            percent = (total_expense / budget) * 100
-            balance = budget - total_expense
-            print(f"📊 Sisa budget bulan ini: Rp {balance:,.0f} ({100-percent:.1f}% tersisa)")
-            if percent >= 100:
-                print("🚨 PERINGATAN: Budget bulan ini sudah MELEBIHI BATAS!")
-            elif percent >= 80:
-                print("⚠️ PERINGATAN: Budget bulan ini hampir habis!")
-
+        docs = list(db.collection('expenses').where('timestamp', '>=', start_date).where('timestamp', '<', end_date).stream())
+        total_exp = sum(d.to_dict().get('amount', 0) for d in docs)
+        total_wants = sum(d.to_dict().get('amount', 0) for d in docs if is_wants_expense(d.to_dict().get('category', ''), d.to_dict().get('description', '')))
+        wants_pct = (total_wants / total_exp * 100) if total_exp > 0 else 0
+        if wants_pct > 30:
+            print(f"\n⚠️ PERINGATAN 50/30/20: Total pengeluaran 'Wants' bulan ini sudah mencapai Rp {total_wants:,.0f} ({wants_pct:.1f}% dari total pengeluaran). Melebihi batas ideal 30%!")
+        else:
+            print(f"\n💡 Info Wants: Porsi pengeluaran 'Wants' bulan ini berada di {wants_pct:.1f}% (Rp {total_wants:,.0f} dari total Rp {total_exp:,.0f}).")
 
 
 def batch_bought(json_string):
@@ -235,8 +239,6 @@ def batch_bought(json_string):
         
     batch = db.batch()
     total_amount = 0
-    
-    month = get_current_month_str()
     
     for obj in items:
         item = obj.get('item', '')
@@ -270,4 +272,10 @@ def batch_bought(json_string):
         print(f"✅ Dicatat: {item} (Rp {amount:,.0f})")
         
     batch.commit()
+    
+    if total_amount > 0:
+        _auto_adjust_liquid_asset(-total_amount)
+        
     print(f"\n🎉 Batch transaksi selesai. Total pengeluaran: Rp {total_amount:,.0f}")
+    cash_available = get_current_cash_balance()
+    print(f"💵 Sisa Cash Tersedia: Rp {cash_available:,.0f}")
