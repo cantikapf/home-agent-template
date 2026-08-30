@@ -26,9 +26,14 @@
 
 ## 📸 Antarmuka & Preview Sistem
 
-| **Web Dashboard (Next.js Standalone)** | **Interaksi Asisten WhatsApp** |
+| **Ringkasan Keuangan & Arus Kas (`/finance`)** | **System Overview & Health (`/`)** |
 |:---:|:---:|
-| ![Web Dashboard Preview](docs/assets/dashboard-preview.svg) | ![WhatsApp Chat Preview](docs/assets/whatsapp-chat.svg) |
+| ![Finance Dashboard Preview](docs/assets/dashboard-preview.svg) | ![System Overview Preview](docs/assets/system-overview.svg) |
+
+<p align="center">
+  <b>Interaksi Asisten WhatsApp (Vision OCR Struk &amp; Resep Masakan):</b><br />
+  <img src="docs/assets/whatsapp-chat.svg" alt="WhatsApp Chat Preview" width="560px" />
+</p>
 
 ---
 
