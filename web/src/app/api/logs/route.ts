@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const home = getHermesHome();
     const logsDir = path.join(home, 'logs');
     const url = new URL(request.url);
-    const file = url.searchParams.get('file') || 'maintenance.log';
+    const file = url.searchParams.get('file') || 'agent.log';
     const lines = parseInt(url.searchParams.get('lines') || '200');
     const search = url.searchParams.get('search') || '';
     const level = url.searchParams.get('level') || '';

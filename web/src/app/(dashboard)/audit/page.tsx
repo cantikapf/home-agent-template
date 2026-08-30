@@ -35,10 +35,17 @@ export default function AuditPage() {
       const res = await fetch(`/api/audit?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setEntries(data.entries || []);
+        const items: AuditEntry[] = data.entries || [];
+        setEntries(items);
 
-        const actions = new Set<string>((data.entries || []).map((e: AuditEntry) => e.action));
-        setAllActions(Array.from(actions).sort());
+        // Populate unique actions without losing existing ones when filtering
+        setAllActions(prev => {
+          const actionSet = new Set<string>(prev);
+          items.forEach(e => {
+            if (e.action) actionSet.add(e.action);
+          });
+          return Array.from(actionSet).sort();
+        });
       }
     } catch {}
     setLoading(false);
