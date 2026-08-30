@@ -1,23 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/api-utils';
+import { requireAuth, getHermesHome } from '@/lib/api-utils';
 import fs from 'fs';
+import path from 'path';
 
-const AUDIT_PATH = '/tmp/hermes-audit.json';
 const MAX_ENTRIES = 1000;
 
-function loadEntries(): any[] {
+function getAuditPath(): string {
   try {
-    if (fs.existsSync(AUDIT_PATH)) {
-      return JSON.parse(fs.readFileSync(AUDIT_PATH, 'utf8'));
+    const home = getHermesHome();
+    return path.join(home, 'audit.json');
+  } catch {
+    return '/tmp/hermes-audit.json';
+  }
+}
+
+function loadEntries(): any[] {
+  const auditPath = getAuditPath();
+  try {
+    if (fs.existsSync(auditPath)) {
+      return JSON.parse(fs.readFileSync(auditPath, 'utf8'));
     }
   } catch {}
+
+  // Fallback check in /tmp
+  try {
+    const legacyPath = '/tmp/hermes-audit.json';
+    if (auditPath !== legacyPath && fs.existsSync(legacyPath)) {
+      return JSON.parse(fs.readFileSync(legacyPath, 'utf8'));
+    }
+  } catch {}
+
   return [];
 }
 
 function saveEntries(entries: any[]) {
-  const dir = '/tmp';
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(AUDIT_PATH, JSON.stringify(entries.slice(-MAX_ENTRIES), null, 2), 'utf8');
+  const auditPath = getAuditPath();
+  try {
+    const dir = path.dirname(auditPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(auditPath, JSON.stringify(entries.slice(-MAX_ENTRIES), null, 2), 'utf8');
+  } catch {
+    // Fallback write to /tmp if hermesHome is unwritable
+    const fallbackPath = '/tmp/hermes-audit.json';
+    fs.writeFileSync(fallbackPath, JSON.stringify(entries.slice(-MAX_ENTRIES), null, 2), 'utf8');
+  }
 }
 
 export async function GET(request: NextRequest) {

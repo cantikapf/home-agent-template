@@ -12,7 +12,7 @@ interface LogLine {
 
 export default function LogsPage() {
   const [files, setFiles] = useState<string[]>([]);
-  const [currentFile, setCurrentFile] = useState('maintenance.log');
+  const [currentFile, setCurrentFile] = useState('agent.log');
   const [lines, setLines] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
@@ -33,9 +33,16 @@ export default function LogsPage() {
       const res = await fetch(`/api/logs?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setFiles(data.files);
-        setLines(data.lines);
-        setTotalLines(data.totalLines);
+        const availableFiles: string[] = data.files || [];
+        setFiles(availableFiles);
+        setLines(data.lines || []);
+        setTotalLines(data.totalLines || 0);
+
+        // Auto-select first available file if current file is missing from server
+        if (availableFiles.length > 0 && !availableFiles.includes(currentFile)) {
+          const fallback = availableFiles.includes('agent.log') ? 'agent.log' : availableFiles[0];
+          setCurrentFile(fallback);
+        }
       }
     } catch (e) { console.error(e); }
     setLoading(false);

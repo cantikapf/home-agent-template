@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
   const home = getHermesHome();
   const logsDir = path.join(home, 'logs');
-  const file = url.searchParams.get('file') || 'maintenance.log';
+  const file = url.searchParams.get('file') || 'agent.log';
   const filePath = path.join(logsDir, file);
 
   let fd: number;
