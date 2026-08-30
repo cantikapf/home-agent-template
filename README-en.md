@@ -26,9 +26,14 @@
 
 ## 📸 Interface & System Preview
 
-| **Web Dashboard (Next.js Standalone)** | **WhatsApp Assistant Interaction** |
+| **Finance & Cash Flow (`/finance`)** | **System Overview & Health (`/`)** |
 |:---:|:---:|
-| ![Web Dashboard Preview](docs/assets/dashboard-preview.svg) | ![WhatsApp Chat Preview](docs/assets/whatsapp-chat.svg) |
+| ![Finance Dashboard Preview](docs/assets/dashboard-preview.svg) | ![System Overview Preview](docs/assets/system-overview.svg) |
+
+<p align="center">
+  <b>WhatsApp Assistant Interaction (Vision OCR Receipt &amp; Cooking Recipes):</b><br />
+  <img src="docs/assets/whatsapp-chat.svg" alt="WhatsApp Chat Preview" width="560px" />
+</p>
 
 ---
 
